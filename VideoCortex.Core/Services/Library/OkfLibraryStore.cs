@@ -2,7 +2,10 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Markdig;
 using VideoCortex.Core.Entities;
+using VideoCortex.Core.Services.Llm;
+using VideoCortex.Core.Services.Utilities;
 
 namespace VideoCortex.Core.Services.Library;
 
@@ -15,6 +18,8 @@ namespace VideoCortex.Core.Services.Library;
 public sealed partial class OkfLibraryStore : IOkfLibraryStore
 {
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
+    private static readonly MarkdownPipeline MarkdigPipeline =
+        new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
 
     private readonly string _rootPath;
     private readonly string _templatesDir;
@@ -65,6 +70,77 @@ public sealed partial class OkfLibraryStore : IOkfLibraryStore
 
         // Remove the sample index-group block (no concepts yet). Phase 6 fills the report.
         html = IndexGroupBlock().Replace(html, string.Empty);
+        return html;
+    }
+
+    public async Task<string> WriteConceptPageAsync(
+        Project project, Video video, VideoSummary summary, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(video);
+        ArgumentNullException.ThrowIfNull(summary);
+
+        var dir = Path.Combine(_rootPath, SanitizeFolderName(project.Name));
+        Directory.CreateDirectory(dir);
+
+        // Reuse an existing slug (re-summarize overwrites the same file); otherwise derive a
+        // project-unique one from the summary title, falling back to the video id.
+        var slug = string.IsNullOrWhiteSpace(video.ConceptSlug)
+            ? ResolveConceptSlug(dir, summary.Title, video.YoutubeVideoId)
+            : video.ConceptSlug;
+
+        var bodyHtml = Markdown.ToHtml(summary.BodyMarkdown, MarkdigPipeline);
+        var template = await File.ReadAllTextAsync(Path.Combine(_templatesDir, "concept.html"), Utf8NoBom, ct);
+        var html = RenderConcept(template, summary, video, bodyHtml);
+        await AtomicWriteTextAsync(Path.Combine(dir, slug + ".html"), html, ct);
+        return slug;
+    }
+
+    private static string ResolveConceptSlug(string dir, string title, string fallbackId)
+    {
+        var baseSlug = SlugHelper.ToSlug(title, SlugHelper.ToSlug(fallbackId, "video"));
+        var candidate = baseSlug;
+        var n = 1;
+        while (File.Exists(Path.Combine(dir, candidate + ".html")))
+        {
+            n++;
+            candidate = $"{baseSlug}-{n}";
+            if (n > 1000) { candidate = $"{baseSlug}-{Guid.NewGuid():N}"; break; }
+        }
+        return candidate;
+    }
+
+    /// <summary>
+    /// Fills the concept template. okf-meta string values are JSON-encoded (they sit inside
+    /// quotes in the template); the visible title/type/tag text is HTML-encoded; <c>{{TAGS}}</c>
+    /// is the array *contents* and <c>{{RESOURCE}}</c> a bare JSON value — neither double-wrapped.
+    /// The Markdig HTML goes into <c>{{BODY}}</c> last so it is never re-scanned for placeholders.
+    /// </summary>
+    private static string RenderConcept(string template, VideoSummary summary, Video video, string bodyHtml)
+    {
+        var title = (summary.Title ?? string.Empty).Trim();
+        var tags = summary.Tags ?? Array.Empty<string>();
+        var resource = string.IsNullOrWhiteSpace(video.YoutubeVideoId)
+            ? "null"
+            : JsonSerializer.Serialize($"https://www.youtube.com/watch?v={video.YoutubeVideoId}");
+
+        // Quoted okf-meta occurrences first (JSON-encoded), then bare HTML occurrences.
+        var html = template
+            .Replace("\"{{TITLE}}\"", JsonSerializer.Serialize(title))
+            .Replace("\"{{TYPE}}\"", JsonSerializer.Serialize("Video"))
+            .Replace("\"{{DESCRIPTION}}\"", JsonSerializer.Serialize(summary.Description ?? string.Empty));
+
+        html = html
+            .Replace("{{THEME_HREF}}", "theme.css")
+            .Replace("{{TITLE}}", WebUtility.HtmlEncode(title))
+            .Replace("{{TYPE}}", "Video")
+            .Replace("{{TAGS}}", string.Join(", ", tags.Select(t => JsonSerializer.Serialize(t))))
+            .Replace("{{RESOURCE}}", resource)
+            .Replace("{{TIMESTAMP}}", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"))
+            .Replace("{{TAG_CHIPS}}", string.Join("\n      ",
+                tags.Select(t => $"<span class=\"okf-tag\">{WebUtility.HtmlEncode(t)}</span>")))
+            .Replace("{{BODY}}", bodyHtml);
+
         return html;
     }
 

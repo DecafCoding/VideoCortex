@@ -4,6 +4,8 @@ using VideoCortex.Components;
 using VideoCortex.Core.Db;
 using VideoCortex.Core.Services.Config;
 using VideoCortex.Core.Services.Library;
+using VideoCortex.Core.Services.Llm;
+using VideoCortex.Core.Services.Summary;
 using VideoCortex.Core.Services.Transcripts;
 using VideoCortex.Core.Services.Triage;
 using VideoCortex.Features.Projects.Services;
@@ -52,6 +54,13 @@ builder.Services.AddScoped<IVideoQueries, VideoQueries>();
 builder.Services.AddHttpClient<ITranscriptSource, ApifyTranscriptSource>();
 builder.Services.AddScoped<ITranscriptIngestRunner, TranscriptIngestRunner>();
 builder.Services.AddHostedService<TranscriptWorker>();
+
+// Summary pipeline stage: the OpenAI-compatible client + summarizer are singletons (they hold
+// only IOptionsMonitor + the endpoint client cache); the runner is scoped (touches DbContext).
+builder.Services.AddSingleton<OpenAiClient>();
+builder.Services.AddSingleton<IVideoSummarizer, OpenAiSummarizer>();
+builder.Services.AddScoped<ISummaryIngestRunner, SummaryIngestRunner>();
+builder.Services.AddHostedService<SummaryWorker>();
 
 var app = builder.Build();
 
