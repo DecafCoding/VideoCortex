@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{LIBRARY_TITLE}}</title>
+  <link rel="stylesheet" href="{{THEME_HREF}}">
+  <!-- Only the ROOT index.html carries an okf-meta block, and it is the
+       only place the library version is declared. Subdir indexes may omit it. -->
+  <script type="application/json" id="okf-meta">
+  {
+    "type": "Index",
+    "title": "{{LIBRARY_TITLE}}",
+    "okf_html_version": "0.1"
+  }
+  </script>
+</head>
+<body>
+  <main>
+    <h1>{{LIBRARY_TITLE}}</h1>
+    <p class="description">{{LIBRARY_DESCRIPTION}}</p>
+
+    <!-- One group per section/subdirectory. Repeat as needed.
+         Each entry links a concept (or subdir/) and shows its description. -->
+    <section class="okf-index-group">
+      <h2>{{GROUP_HEADING}}</h2>
+      <ul class="okf-index-list">
+        <li>
+          <a class="title" href="{{ENTRY_HREF}}">{{ENTRY_TITLE}}</a>
+          <span class="description">{{ENTRY_DESCRIPTION}}</span>
+        </li>
+        <!-- … more <li> entries … -->
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

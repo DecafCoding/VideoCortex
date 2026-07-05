@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- TITLE goes in the tab title; keep in sync with metadata "title". -->
+  <title>{{TITLE}}</title>
+  <!-- THEME_HREF is a RELATIVE path to the root theme.css:
+       "theme.css" at root, "../theme.css" one level deep, etc. -->
+  <link rel="stylesheet" href="{{THEME_HREF}}">
+  <!-- Metadata block: the OKF-HTML replacement for YAML frontmatter.
+       "type" is required; everything else is optional. -->
+  <script type="application/json" id="okf-meta">
+  {
+    "type": "{{TYPE}}",
+    "title": "{{TITLE}}",
+    "description": "{{DESCRIPTION}}",
+    "tags": [{{TAGS}}],
+    "resource": {{RESOURCE}},
+    "timestamp": "{{TIMESTAMP}}"
+  }
+  </script>
+</head>
+<body>
+  <main>
+    <!-- Optional chip bar showing type + tags. Static HTML, no JS needed. -->
+    <div class="okf-meta-bar">
+      <span class="okf-type">{{TYPE}}</span>
+      {{TAG_CHIPS}}
+    </div>
+
+    <h1>{{TITLE}}</h1>
+
+    <!-- BODY: semantic HTML. Use <h2>/<h3>, <table>, <pre><code>,
+         <figure><img>, inline SVG/canvas for graphs, etc.
+         Cross-link other concepts with relative <a href> paths. -->
+    {{BODY}}
+  </main>
+</body>
+</html>
