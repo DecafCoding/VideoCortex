@@ -4,8 +4,10 @@ using VideoCortex.Components;
 using VideoCortex.Core.Db;
 using VideoCortex.Core.Services.Config;
 using VideoCortex.Core.Services.Library;
+using VideoCortex.Core.Services.Transcripts;
 using VideoCortex.Core.Services.Triage;
 using VideoCortex.Features.Projects.Services;
+using VideoCortex.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +46,12 @@ builder.Services.AddSingleton<IOkfLibraryStore>(sp =>
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IVideoCommands, VideoCommands>();
 builder.Services.AddScoped<IVideoQueries, VideoQueries>();
+
+// Transcript pipeline stage: typed HttpClient source (Apify) + scoped per-video runner +
+// the polling background worker. The typed-client registration also registers ITranscriptSource.
+builder.Services.AddHttpClient<ITranscriptSource, ApifyTranscriptSource>();
+builder.Services.AddScoped<ITranscriptIngestRunner, TranscriptIngestRunner>();
+builder.Services.AddHostedService<TranscriptWorker>();
 
 var app = builder.Build();
 
