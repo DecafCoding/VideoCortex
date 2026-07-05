@@ -95,7 +95,7 @@ Built in phases (see `docs/phases/` and `docs/progress.md`):
 - ✅ **Phase 1** — Foundation: solution, data layer, config, OKF templates
 - ✅ **Phase 2** — Projects: CRUD + on-disk OKF library scaffolding
 - ✅ **Phase 3** — Manual add: YouTube input parser, add-video command, status table
-- ⬜ **Phase 4** — Transcript worker (Apify)
+- ✅ **Phase 4** — Transcript worker: Apify transcript + metadata, ingest runner, polling worker
 - ⬜ **Phase 5** — Per-video summary → concept page (LLM)
 - ⬜ **Phase 6** — Per-project synthesized report → root index (LLM)
 - ⬜ **Phase 7** — Settings page + resilience polish

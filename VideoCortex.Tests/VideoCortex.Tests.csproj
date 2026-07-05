@@ -21,6 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="TestData\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\VideoCortex\VideoCortex.csproj" />
     <ProjectReference Include="..\VideoCortex.Core\VideoCortex.Core.csproj" />
   </ItemGroup>
