@@ -1,4 +1,5 @@
 using VideoCortex.Core.Entities;
+using VideoCortex.Core.Services.Llm;
 
 namespace VideoCortex.Core.Services.Library;
 
@@ -30,4 +31,13 @@ public interface IOkfLibraryStore
     /// <c>theme.css</c> without throwing.
     /// </summary>
     Task CreateLibraryAsync(Project project, CancellationToken ct = default);
+
+    /// <summary>
+    /// Renders a video's summary into an OKF concept page (<c>&lt;concept-slug&gt;.html</c>) inside
+    /// the project's library folder. The LLM supplies only Markdown for the body; the page shell,
+    /// <c>okf-meta</c>, and <c>&lt;h1&gt;</c> are filled deterministically from the bundled template.
+    /// Returns the concept slug used (stable if <see cref="Video.ConceptSlug"/> is already set,
+    /// otherwise derived from the title with project-scoped collision resolution).
+    /// </summary>
+    Task<string> WriteConceptPageAsync(Project project, Video video, VideoSummary summary, CancellationToken ct = default);
 }
