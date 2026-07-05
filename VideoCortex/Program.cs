@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using VideoCortex.Components;
 using VideoCortex.Core.Db;
 using VideoCortex.Core.Services.Config;
+using VideoCortex.Core.Services.Library;
+using VideoCortex.Features.Projects.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +28,19 @@ builder.Services.Configure<LibrarySettings>(builder.Configuration.GetSection(Lib
 builder.Services.Configure<TranscriptWorkerSettings>(builder.Configuration.GetSection(TranscriptWorkerSettings.Section));
 builder.Services.Configure<SummarySettings>(builder.Configuration.GetSection(SummarySettings.Section));
 builder.Services.Configure<ReportSettings>(builder.Configuration.GetSection(ReportSettings.Section));
+
+// OKF library disk-writer. Singleton constructed from the configured library root and the
+// bundled wwwroot/okf templates. RootPath is captured at startup (static this phase; Phase 7's
+// Settings page can revisit if it becomes runtime-editable). Create the root defensively —
+// the default Documents\SecondBrain may not exist on a fresh machine.
+builder.Services.AddSingleton<IOkfLibraryStore>(sp =>
+{
+    var root = sp.GetRequiredService<IOptions<LibrarySettings>>().Value.RootPath;
+    Directory.CreateDirectory(root);
+    var templatesDir = Path.Combine(sp.GetRequiredService<IWebHostEnvironment>().WebRootPath, "okf");
+    return new OkfLibraryStore(root, templatesDir);
+});
+builder.Services.AddScoped<IProjectService, ProjectService>();
 
 var app = builder.Build();
 

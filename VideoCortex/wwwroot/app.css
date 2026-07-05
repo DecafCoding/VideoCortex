@@ -16,6 +16,9 @@ body {
 }
 
 .topbar {
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
     border-bottom: 1px solid var(--rule);
     padding: 0.75rem 1.25rem;
 }
@@ -23,6 +26,12 @@ body {
 .brand {
     font-weight: 600;
     font-size: 1.1rem;
+    color: var(--fg);
+}
+
+.topnav {
+    display: flex;
+    gap: 1rem;
 }
 
 .container {
@@ -38,4 +47,61 @@ h1 {
 }
 
 a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
 .muted { color: var(--muted); }
+.meta { color: var(--muted); font-size: 0.9rem; }
+.success { color: var(--done, #16a34a); }
+.warn { color: var(--warn, #dc2626); }
+code { background: #f6f8fa; padding: 0.1rem 0.3rem; border-radius: 4px; }
+
+.panel {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+}
+
+.form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+    max-width: 40rem;
+}
+.form-row label { font-weight: 600; font-size: 0.9rem; }
+.form-row input, .form-row textarea {
+    font: inherit;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+}
+
+button {
+    font: inherit;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+}
+button:disabled { opacity: 0.6; cursor: default; }
+.btn-danger { background: var(--warn, #dc2626); border-color: var(--warn, #dc2626); }
+
+.cards { list-style: none; padding: 0; display: grid; gap: 0.75rem; }
+.card {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+}
+.card-title { font-weight: 600; font-size: 1.1rem; }
+
+.danger-zone {
+    border: 1px solid var(--warn, #dc2626);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+}
+.checkbox { display: flex; gap: 0.4rem; align-items: center; margin: 0.5rem 0; }
+.actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.validation-message { color: var(--warn, #dc2626); font-size: 0.85rem; }
