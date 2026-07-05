@@ -1,0 +1,91 @@
+@inject IVideoQueries VideoQueries
+
+<div class="videos-header">
+    <h3>Videos @(_videos is not null ? $"({_videos.Count})" : "")</h3>
+    <button type="button" @onclick="RefreshAsync" disabled="@_loading">Refresh</button>
+</div>
+
+@if (_loading && _videos is null)
+{
+    <p class="muted">Loading…</p>
+}
+else if (_videos is null || _videos.Count == 0)
+{
+    <p class="muted">No videos in this project yet.</p>
+}
+else
+{
+    <table class="videos">
+        <thead>
+            <tr><th>Video</th><th>Status</th><th>Added</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var v in _videos)
+            {
+                <tr>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(v.Title))
+                        {
+                            @v.Title
+                        }
+                        else
+                        {
+                            <code>@v.YoutubeVideoId</code>
+                        }
+                    </td>
+                    <td><span class="badge @BadgeClass(v.Status)">@Label(v.Status)</span></td>
+                    <td class="meta">@v.AddedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+
+    private IReadOnlyList<VideoRowDto>? _videos;
+    private bool _loading;
+    private int _loadedProjectId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Reload when first shown or when the target project changes.
+        if (_videos is null || _loadedProjectId != ProjectId)
+        {
+            _loadedProjectId = ProjectId;
+            await RefreshAsync();
+        }
+    }
+
+    public async Task RefreshAsync()
+    {
+        _loading = true;
+        try
+        {
+            _videos = await VideoQueries.ListForProjectAsync(ProjectId);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string Label(VideoStatus status) => status switch
+    {
+        VideoStatus.Added => "Added",
+        VideoStatus.Transcribed => "Transcribed",
+        VideoStatus.Summarized => "Summarized",
+        VideoStatus.Published => "Published",
+        VideoStatus.NoTranscript => "No transcript",
+        VideoStatus.Error => "Error",
+        _ => status.ToString(),
+    };
+
+    private static string BadgeClass(VideoStatus status) => status switch
+    {
+        VideoStatus.Published => "badge-done",
+        VideoStatus.NoTranscript or VideoStatus.Error => "badge-warn",
+        _ => "badge-neutral",
+    };
+}

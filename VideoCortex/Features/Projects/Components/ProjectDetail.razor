@@ -35,10 +35,10 @@ else
     </p>
     <p class="muted">Library path: <code>@_libraryPath</code></p>
 
-    @* TODO(Phase 3): mount the video table here — add-video box + per-video status rows. *@
     <section class="panel">
         <h2>Videos</h2>
-        <p class="muted">Video ingestion arrives in Phase 3.</p>
+        <AddVideoForm ProjectId="_project.Id" OnVideoAdded="RefreshVideos" />
+        <ProjectVideos @ref="_videos" ProjectId="_project.Id" />
     </section>
 
     <section class="danger-zone">
@@ -72,6 +72,7 @@ else
     [Parameter] public string Slug { get; set; } = string.Empty;
 
     private ProjectDetailDto? _project;
+    private ProjectVideos? _videos;
     private bool _loading = true;
     private bool _confirmingDelete;
     private bool _alsoDeleteFolder;
@@ -93,6 +94,12 @@ else
             _libraryUri = new Uri(_libraryPath).AbsoluteUri;
         }
         _loading = false;
+    }
+
+    private async Task RefreshVideos()
+    {
+        if (_videos is not null)
+            await _videos.RefreshAsync();
     }
 
     private async Task ConfirmDelete()

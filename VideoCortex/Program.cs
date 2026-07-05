@@ -4,6 +4,7 @@ using VideoCortex.Components;
 using VideoCortex.Core.Db;
 using VideoCortex.Core.Services.Config;
 using VideoCortex.Core.Services.Library;
+using VideoCortex.Core.Services.Triage;
 using VideoCortex.Features.Projects.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,6 +42,8 @@ builder.Services.AddSingleton<IOkfLibraryStore>(sp =>
     return new OkfLibraryStore(root, templatesDir);
 });
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IVideoCommands, VideoCommands>();
+builder.Services.AddScoped<IVideoQueries, VideoQueries>();
 
 var app = builder.Build();
 

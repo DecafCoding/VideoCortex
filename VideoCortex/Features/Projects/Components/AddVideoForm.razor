@@ -1,0 +1,63 @@
+@inject IVideoCommands VideoCommands
+
+<EditForm Model="@Model" OnValidSubmit="HandleSubmit" FormName="add-video">
+    <div class="add-video-row">
+        <InputText @bind-Value="Model.Input" placeholder="YouTube URL or video ID" disabled="@_busy" />
+        <button type="submit" disabled="@_busy">@(_busy ? "Adding…" : "Add Video")</button>
+    </div>
+</EditForm>
+
+<p class="muted small">Pasted videos are queued for processing; the transcript and summary are fetched later.</p>
+
+@if (_message is not null)
+{
+    <p class="@_messageClass">@_message</p>
+}
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public EventCallback OnVideoAdded { get; set; }
+
+    private AddInputModel Model { get; set; } = new();
+    private bool _busy;
+    private string? _message;
+    private string _messageClass = "muted";
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(Model.Input)) return;
+
+        _busy = true;
+        _message = null;
+        try
+        {
+            var result = await VideoCommands.AddVideoByUrlAsync(ProjectId, Model.Input!);
+            switch (result.Outcome)
+            {
+                case AddVideoOutcome.Added:
+                    Model = new AddInputModel();
+                    _message = $"Added {result.YoutubeVideoId}.";
+                    _messageClass = "success";
+                    await OnVideoAdded.InvokeAsync();
+                    break;
+                case AddVideoOutcome.DuplicateInProject:
+                    _message = result.Message;
+                    _messageClass = "warn";
+                    break;
+                default:
+                    _message = result.Message;
+                    _messageClass = "warn";
+                    break;
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private sealed class AddInputModel
+    {
+        public string? Input { get; set; }
+    }
+}
