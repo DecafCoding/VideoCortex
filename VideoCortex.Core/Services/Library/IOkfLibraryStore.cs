@@ -40,4 +40,19 @@ public interface IOkfLibraryStore
     /// otherwise derived from the title with project-scoped collision resolution).
     /// </summary>
     Task<string> WriteConceptPageAsync(Project project, Video video, VideoSummary summary, CancellationToken ct = default);
+
+    /// <summary>
+    /// (Re)writes the project's root <c>index.html</c> as the synthesized report: wraps the
+    /// LLM-authored inner-body <paramref name="reportHtml"/> in the OKF root-index template
+    /// (<c>okf-meta</c> <c>type: "Index"</c>, <c>okf_html_version: "0.1"</c>, relative
+    /// <c>theme.css</c>). Written atomically, so a good prior file is never left half-overwritten.
+    /// </summary>
+    Task WriteReportAsync(Project project, string libraryDescription, string reportHtml, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a video's concept page (<c>&lt;ConceptSlug&gt;.html</c>) from the project folder.
+    /// No-op when the slug is null/empty or the file is absent. Only ever touches the project's
+    /// own folder.
+    /// </summary>
+    Task DeleteConceptPageAsync(Project project, Video video, CancellationToken ct = default);
 }

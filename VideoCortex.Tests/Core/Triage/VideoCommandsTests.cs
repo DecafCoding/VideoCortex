@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using VideoCortex.Core.Db;
 using VideoCortex.Core.Entities;
+using VideoCortex.Core.Services.Library;
 using VideoCortex.Core.Services.Triage;
 
 namespace VideoCortex.Tests.Core.Triage;
@@ -9,11 +10,16 @@ namespace VideoCortex.Tests.Core.Triage;
 public class VideoCommandsTests : IDisposable
 {
     private readonly SqliteInMemoryFixture _fx = new();
+    private readonly string _root = TestPaths.NewTempDir();
 
-    public void Dispose() => _fx.Dispose();
+    public void Dispose()
+    {
+        _fx.Dispose();
+        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
+    }
 
-    private static VideoCommands NewCommands(VideoCortexDbContext db)
-        => new(db, NullLogger<VideoCommands>.Instance);
+    private VideoCommands NewCommands(VideoCortexDbContext db)
+        => new(db, new OkfLibraryStore(_root, TestPaths.OkfTemplatesDir()), NullLogger<VideoCommands>.Instance);
 
     private static int SeedProject(VideoCortexDbContext db, string slug)
     {

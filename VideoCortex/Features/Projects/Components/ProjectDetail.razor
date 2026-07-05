@@ -30,15 +30,22 @@ else
         Created @_project.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd") · Status: @_project.Status
     </p>
 
-    <p>
-        <a href="@_libraryUri" target="_blank" rel="noopener">Open Library ↗</a>
-    </p>
+    <div class="actions">
+        <a class="btn-link" href="@_libraryUri" target="_blank" rel="noopener">Open Library ↗</a>
+        <button type="button" @onclick="RebuildReport" disabled="@_rebuilding">
+            @(_rebuilding ? "Requesting…" : "Rebuild Report")
+        </button>
+    </div>
     <p class="muted">Library path: <code>@_libraryPath</code></p>
+    @if (_rebuildMessage is not null)
+    {
+        <p class="success">@_rebuildMessage</p>
+    }
 
     <section class="panel">
         <h2>Videos</h2>
         <AddVideoForm ProjectId="_project.Id" OnVideoAdded="RefreshVideos" />
-        <ProjectVideos @ref="_videos" ProjectId="_project.Id" />
+        <ProjectVideos @ref="_videos" ProjectId="_project.Id" LibraryDir="_libraryDir" OnChanged="RefreshVideos" />
     </section>
 
     <section class="danger-zone">
@@ -80,6 +87,9 @@ else
     private string? _error;
     private string _libraryUri = string.Empty;
     private string _libraryPath = string.Empty;
+    private string _libraryDir = string.Empty;
+    private bool _rebuilding;
+    private string? _rebuildMessage;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -87,13 +97,28 @@ else
         _project = await ProjectService.GetBySlugAsync(Slug);
         if (_project is not null)
         {
-            _libraryPath = Path.Combine(
-                LibraryOptions.Value.RootPath, _project.LibraryFolderName, "index.html");
+            _libraryDir = Path.Combine(LibraryOptions.Value.RootPath, _project.LibraryFolderName);
+            _libraryPath = Path.Combine(_libraryDir, "index.html");
             // file:// link so the on-disk library opens in a browser. Navigation from an
             // http:// page may be blocked by the browser — the plain path is shown too.
             _libraryUri = new Uri(_libraryPath).AbsoluteUri;
         }
         _loading = false;
+    }
+
+    private async Task RebuildReport()
+    {
+        _rebuilding = true;
+        _rebuildMessage = null;
+        try
+        {
+            await ProjectService.RequestReportRebuildAsync(_project!.Id);
+            _rebuildMessage = "Report rebuild requested — it will regenerate shortly.";
+        }
+        finally
+        {
+            _rebuilding = false;
+        }
     }
 
     private async Task RefreshVideos()

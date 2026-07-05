@@ -97,7 +97,7 @@ Built in phases (see `docs/phases/` and `docs/progress.md`):
 - ✅ **Phase 3** — Manual add: YouTube input parser, add-video command, status table
 - ✅ **Phase 4** — Transcript worker: Apify transcript + metadata, ingest runner, polling worker
 - ✅ **Phase 5** — Summary → concept page: OpenAI-compatible client, video summarizer, OKF concept-page writer, summary worker
-- ⬜ **Phase 6** — Per-project synthesized report → root index (LLM)
+- ✅ **Phase 6** — Report → root index: cross-video synthesizer, debounced report worker, OKF root-index writer, rebuild/open/remove UI
 - ⬜ **Phase 7** — Settings page + resilience polish
 
 See [`docs/prd.md`](docs/prd.md) for the full product spec and [`CLAUDE.md`](CLAUDE.md) for contributor conventions.

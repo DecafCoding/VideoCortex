@@ -120,6 +120,18 @@ public sealed class ProjectService(
         return new DeleteProjectResult(true, null);
     }
 
+    public async Task<bool> RequestReportRebuildAsync(int projectId, CancellationToken ct = default)
+    {
+        var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project is null) return false;
+
+        project.ReportDirtySince = DateTime.UtcNow;
+        project.ReportNextAttemptAt = null;
+        project.ReportRetryCount = 0;
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static string? Normalize(string? s)
     {
         s = s?.Trim();

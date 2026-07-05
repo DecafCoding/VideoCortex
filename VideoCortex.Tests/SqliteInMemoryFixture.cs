@@ -29,5 +29,8 @@ public sealed class SqliteInMemoryFixture : IDisposable
     /// <summary>A fresh context over the shared in-memory database.</summary>
     public VideoCortexDbContext CreateContext() => new(_options);
 
+    /// <summary>The shared options, for registering the context in a test service provider.</summary>
+    public DbContextOptions<VideoCortexDbContext> Options => _options;
+
     public void Dispose() => _connection.Dispose();
 }
