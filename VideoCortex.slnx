@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="VideoCortex.Core/VideoCortex.Core.csproj" />
+  <Project Path="VideoCortex/VideoCortex.csproj" />
+  <Project Path="VideoCortex.Tests/VideoCortex.Tests.csproj" />
+</Solution>

@@ -1,0 +1,119 @@
+/* OKF-HTML shared theme.
+   This single file styles every concept in the library.
+   Change it here to restyle the whole library at once.
+
+   Look adapted from the SeedForge docs theme:
+   GitHub-README-flavored, system fonts, bordered headings,
+   light code blocks, and ☐/☑ checklists — now with dark mode. */
+
+:root {
+  --fg: #1a1a1a;
+  --muted: #666;
+  --accent: #2563eb;
+  --done: #16a34a;
+  --warn: #dc2626;
+  --rule: #e5e7eb;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --code-bg: #f6f8fa;
+  --max-width: 62rem;
+  --radius: 6px;
+  --font-body: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #e6e6e6;
+    --muted: #9aa0a6;
+    --accent: #6ea8fe;
+    --done: #4ade80;
+    --warn: #f87171;
+    --rule: #2a2f36;
+    --bg: #14171a;
+    --surface: #1b1f24;
+    --code-bg: #1e242b;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font: 16px/1.6 var(--font-body);
+  color: var(--fg);
+  background: var(--bg);
+  max-width: var(--max-width);
+  margin: 2rem auto;
+  padding: 0 1.25rem;
+}
+
+h1 { font-size: 2rem; border-bottom: 2px solid var(--rule); padding-bottom: 0.3rem; }
+h2 { font-size: 1.5rem; margin-top: 2.5rem; border-bottom: 1px solid var(--rule); padding-bottom: 0.2rem; }
+h3 { font-size: 1.25rem; margin-top: 2rem; }
+h3.milestone { color: var(--accent); }
+h4 { font-size: 1.1rem; margin-top: 1.5rem; }
+h4.task { font-size: 1.1rem; margin-top: 1.5rem; }
+
+p, li { color: var(--fg); }
+.muted, .description { color: var(--muted); }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Definition-list metadata (as used in the SeedForge phase docs). */
+dl.phase-meta,
+dl.meta { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
+dl.phase-meta dt,
+dl.meta dt { font-weight: 600; color: var(--muted); }
+
+/* Code */
+code, pre { font-family: var(--font-mono); }
+pre { background: var(--code-bg); padding: 1rem; border-radius: var(--radius); overflow: auto; }
+code { background: var(--code-bg); padding: 0.1rem 0.3rem; border-radius: 4px; }
+pre code { background: none; padding: 0; }
+
+/* Checklists — ☐ / ☑ toggled by data-checked, checked box turns green. */
+ul.checklist { list-style: none; padding-left: 0; }
+ul.checklist > li::before { content: "\2610 "; color: var(--muted); }
+ul.checklist > li[data-checked="true"]::before { content: "\2611 "; color: var(--done); }
+
+/* Validation / status callouts */
+.validate { color: var(--done); font-weight: 600; }
+.warn { color: var(--warn); font-weight: 600; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 1.25rem 0; font-size: 0.95rem; }
+th, td { text-align: left; padding: 0.5rem 0.75rem; border: 1px solid var(--rule); }
+th { background: var(--code-bg); font-weight: 600; }
+
+/* Media */
+figure { margin: 1.5rem 0; }
+img, svg, canvas { max-width: 100%; height: auto; border-radius: var(--radius); }
+figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.4rem; text-align: center; }
+
+blockquote {
+  margin: 1.25rem 0; padding: 0.5rem 1rem;
+  border-left: 3px solid var(--accent); color: var(--muted);
+}
+
+/* OKF metadata chip bar at the top of a concept */
+.okf-meta-bar {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+  margin: 0 0 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--rule);
+  font-size: 0.85rem; color: var(--muted);
+}
+.okf-type {
+  background: var(--accent); color: #fff; padding: 0.1rem 0.6rem;
+  border-radius: 999px; font-weight: 600; letter-spacing: 0.02em;
+}
+.okf-tag {
+  background: var(--code-bg); color: var(--muted);
+  padding: 0.1rem 0.55rem; border-radius: 999px;
+}
+
+/* Index-page listing */
+.okf-index-group { margin: 2rem 0; }
+.okf-index-list { list-style: none; padding: 0; margin: 0; }
+.okf-index-list li { padding: 0.6rem 0; border-bottom: 1px solid var(--rule); }
+.okf-index-list .title { font-weight: 600; }
+.okf-index-list .description { display: block; font-size: 0.9rem; margin-top: 0.15rem; }
