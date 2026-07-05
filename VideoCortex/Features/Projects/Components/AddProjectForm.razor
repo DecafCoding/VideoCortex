@@ -1,0 +1,63 @@
+@inject IProjectService ProjectService
+
+<EditForm Model="@Model" OnValidSubmit="HandleSubmit" FormName="add-project">
+    <DataAnnotationsValidator />
+
+    <div class="form-row">
+        <label for="name">Name</label>
+        <InputText id="name" @bind-Value="Model.Name" />
+        <ValidationMessage For="() => Model.Name" />
+    </div>
+
+    <div class="form-row">
+        <label for="description">Description</label>
+        <InputTextArea id="description" rows="2" @bind-Value="Model.Description" />
+    </div>
+
+    <div class="form-row">
+        <label for="ai">AI Instructions</label>
+        <InputTextArea id="ai" rows="2" @bind-Value="Model.AIInstructions" />
+    </div>
+
+    <button type="submit" disabled="@_busy">@(_busy ? "Creating…" : "Add Project")</button>
+</EditForm>
+
+@if (_message is not null)
+{
+    <p class="@_messageClass">@_message</p>
+}
+
+@code {
+    [Parameter] public EventCallback OnProjectAdded { get; set; }
+
+    private ProjectFormModel Model { get; set; } = new();
+    private bool _busy;
+    private string? _message;
+    private string _messageClass = "muted";
+
+    private async Task HandleSubmit()
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            var result = await ProjectService.CreateAsync(Model);
+            if (result.Success)
+            {
+                Model = new ProjectFormModel();
+                _message = "Project created.";
+                _messageClass = "success";
+                await OnProjectAdded.InvokeAsync();
+            }
+            else
+            {
+                _message = result.ErrorMessage ?? "Could not create the project.";
+                _messageClass = "warn";
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

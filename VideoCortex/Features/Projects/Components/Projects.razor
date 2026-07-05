@@ -1,0 +1,46 @@
+@page "/projects"
+@inject IProjectService ProjectService
+
+<PageTitle>Projects — Video Cortex</PageTitle>
+
+<h1>Projects</h1>
+
+<section class="panel">
+    <h2>New Project</h2>
+    <AddProjectForm OnProjectAdded="ReloadAsync" />
+</section>
+
+<section>
+    @if (_projects is null)
+    {
+        <p class="muted">Loading…</p>
+    }
+    else if (_projects.Count == 0)
+    {
+        <p class="muted">No projects yet. Create one above.</p>
+    }
+    else
+    {
+        <ul class="cards">
+            @foreach (var p in _projects)
+            {
+                <li class="card">
+                    <a class="card-title" href="@($"/projects/{p.Slug}")">@p.Name</a>
+                    @if (!string.IsNullOrWhiteSpace(p.Description))
+                    {
+                        <p class="muted">@p.Description</p>
+                    }
+                    <p class="meta">@p.VideoCount video(s)</p>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<ProjectSummaryDto>? _projects;
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync() => _projects = await ProjectService.ListAsync();
+}
