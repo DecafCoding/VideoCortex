@@ -11,73 +11,95 @@
 
 @if (_loading)
 {
-    <p class="muted">Loading…</p>
+    <p class="text-body-secondary">Loading…</p>
 }
 else if (_project is null)
 {
     <h1>Project not found</h1>
-    <p><a href="/projects">← Back to Projects</a></p>
+    <p><a href="projects">← Back to Projects</a></p>
 }
 else
 {
-    <p><a href="/projects">← Projects</a></p>
-    <h1>@_project.Name</h1>
-
-    @if (!string.IsNullOrWhiteSpace(_project.Description))
-    {
-        <p>@_project.Description</p>
-    }
-    <p class="meta">
-        Created @_project.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd") · Status: @_project.Status
-    </p>
-
-    <div class="actions">
-        <button type="button" class="btn-link" @onclick="OpenLibrary">Open Library ↗</button>
-        <button type="button" @onclick="RebuildReport" disabled="@_rebuilding">
-            @(_rebuilding ? "Requesting…" : "Rebuild Report")
-        </button>
-    </div>
-    <p class="muted">Library path: <code>@_libraryPath</code></p>
-    @if (_rebuildMessage is not null)
-    {
-        <p class="success">@_rebuildMessage</p>
-    }
-    @if (_openError is not null)
-    {
-        <p class="warn">@_openError</p>
-    }
-
-    <section class="panel">
-        <h2>Videos</h2>
-        <AddVideoForm ProjectId="_project.Id" OnVideoAdded="RefreshVideos" />
-        <ProjectVideos @ref="_videos" ProjectId="_project.Id" LibraryDir="_libraryDir" OnChanged="RefreshVideos" />
-    </section>
-
-    <section class="danger-zone">
-        <h2>Delete Project</h2>
-        @if (!_confirmingDelete)
-        {
-            <button class="btn-danger" @onclick="() => _confirmingDelete = true">Delete Project</button>
-        }
-        else
-        {
-            <p>Delete <strong>@_project.Name</strong> from Video Cortex?</p>
-            <label class="checkbox">
-                <input type="checkbox" @bind="_alsoDeleteFolder" />
-                Also delete the library folder on disk (by default the OKF files are kept)
-            </label>
-            <div class="actions">
-                <button class="btn-danger" @onclick="ConfirmDelete" disabled="@_deleting">
-                    @(_deleting ? "Deleting…" : "Confirm Delete")
-                </button>
-                <button @onclick="() => _confirmingDelete = false" disabled="@_deleting">Cancel</button>
+    <div class="row">
+        <aside class="col-lg-3 col-md-4 sidebar-content mb-3">
+            <div class="card mb-3">
+                <div class="card-header"><h2 class="h6 mb-0">Library</h2></div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-primary" @onclick="OpenLibrary">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>Open Library
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="RebuildReport" disabled="@_rebuilding">
+                            <i class="bi bi-arrow-repeat me-1"></i>@(_rebuilding ? "Requesting…" : "Rebuild Report")
+                        </button>
+                    </div>
+                    @if (_rebuildMessage is not null)
+                    {
+                        <div class="alert alert-success py-2 mt-2 mb-0">@_rebuildMessage</div>
+                    }
+                    @if (_openError is not null)
+                    {
+                        <div class="alert alert-warning py-2 mt-2 mb-0">@_openError</div>
+                    }
+                </div>
             </div>
-            @if (_error is not null)
+
+            <div class="card mb-3">
+                <div class="card-header"><h2 class="h6 mb-0">Add a Video</h2></div>
+                <div class="card-body">
+                    <AddVideoForm ProjectId="_project.Id" OnVideoAdded="RefreshVideos" />
+                </div>
+            </div>
+
+            <div class="card border-danger">
+                <div class="card-header text-danger"><h2 class="h6 mb-0">Delete Project</h2></div>
+                <div class="card-body">
+                    @if (!_confirmingDelete)
+                    {
+                        <button class="btn btn-outline-danger" @onclick="() => _confirmingDelete = true">Delete Project</button>
+                    }
+                    else
+                    {
+                        <p>Delete <strong>@_project.Name</strong> from Video Cortex?</p>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="alsoDelete" @bind="_alsoDeleteFolder" />
+                            <label class="form-check-label small" for="alsoDelete">
+                                Also delete the library folder on disk (by default the OKF files are kept)
+                            </label>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-danger" @onclick="ConfirmDelete" disabled="@_deleting">
+                                @(_deleting ? "Deleting…" : "Confirm Delete")
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick="() => _confirmingDelete = false" disabled="@_deleting">Cancel</button>
+                        </div>
+                        @if (_error is not null)
+                        {
+                            <div class="alert alert-warning py-2 mt-2 mb-0">@_error</div>
+                        }
+                    }
+                </div>
+            </div>
+        </aside>
+
+        <section class="col-lg-9 col-md-8">
+            <h1 class="mb-1">@_project.Name</h1>
+            @if (!string.IsNullOrWhiteSpace(_project.Description))
             {
-                <p class="warn">@_error</p>
+                <p class="mb-1">@_project.Description</p>
             }
-        }
-    </section>
+            <p class="text-body-secondary small mb-1">
+                Created @_project.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd") · Status: @_project.Status
+            </p>
+            <p class="text-body-secondary small text-break">Library: <code>@_libraryPath</code></p>
+
+            <div class="card">
+                <div class="card-body">
+                    <ProjectVideos @ref="_videos" ProjectId="_project.Id" LibraryDir="_libraryDir" OnChanged="RefreshVideos" />
+                </div>
+            </div>
+        </section>
+    </div>
 }
 
 @code {

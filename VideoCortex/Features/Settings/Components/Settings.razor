@@ -3,80 +3,92 @@
 
 <PageTitle>Settings — Video Cortex</PageTitle>
 
-<h1>Settings</h1>
-
 @if (_form is null)
 {
-    <p class="muted">Loading…</p>
+    <p class="text-body-secondary">Loading…</p>
 }
 else
 {
     <EditForm Model="_form" OnValidSubmit="SaveAsync">
-        <section class="panel">
-            <h2>LLM Endpoint</h2>
-            <p class="muted small">Any OpenAI-compatible endpoint. Leave Base URL blank for hosted OpenAI, or point it at Ollama's <code>/v1</code>. Changes take effect on the next call — no restart.</p>
-            <div class="form-row">
-                <label>Model</label>
-                <InputText @bind-Value="_form.Model" />
+      <div class="row">
+        <aside class="col-lg-3 col-md-4 sidebar-content mb-3">
+            <div class="card">
+                <div class="card-header"><h2 class="h5 mb-0">Workers</h2></div>
+                <div class="card-body">
+                    <div class="mb-2"><label class="form-label">Transcript poll (s)</label><InputNumber class="form-control" @bind-Value="_form.TranscriptIdlePollSeconds" /></div>
+                    <div class="mb-2"><label class="form-label">Transcript retry cap</label><InputNumber class="form-control" @bind-Value="_form.TranscriptMaxRetryAttempts" /></div>
+                    <div class="mb-2"><label class="form-label">Summary poll (s)</label><InputNumber class="form-control" @bind-Value="_form.SummaryIdlePollSeconds" /></div>
+                    <div class="mb-2"><label class="form-label">Summary retry cap</label><InputNumber class="form-control" @bind-Value="_form.SummaryMaxRetryAttempts" /></div>
+                    <div class="mb-2"><label class="form-label">Report poll (s)</label><InputNumber class="form-control" @bind-Value="_form.ReportIdlePollSeconds" /></div>
+                    <div class="mb-2"><label class="form-label">Report debounce (s)</label><InputNumber class="form-control" @bind-Value="_form.ReportCoalesceDebounceSeconds" /></div>
+                    <div class="mb-0"><label class="form-label">Report retry cap</label><InputNumber class="form-control" @bind-Value="_form.ReportMaxRetryAttempts" /></div>
+                </div>
             </div>
-            <div class="form-row">
-                <label>Base URL</label>
-                <InputText @bind-Value="_form.BaseUrl" placeholder="(blank = https://api.openai.com)" />
-            </div>
-            <div class="form-row">
-                <label>API Key <span class="badge @(_form.ApiKeyIsSet ? "badge-done" : "badge-neutral")">@(_form.ApiKeyIsSet ? "set" : "not set")</span></label>
-                <input type="password" placeholder="@(_form.ApiKeyIsSet ? "•••••• (leave blank to keep)" : "enter API key")"
-                       @oninput="e => OnSecretInput(e, isApify: false)" />
-            </div>
-            <div class="form-row">
-                <label>Request Timeout (seconds)</label>
-                <InputNumber @bind-Value="_form.LlmRequestTimeoutSeconds" />
-            </div>
-        </section>
+        </aside>
 
-        <section class="panel">
-            <h2>Apify</h2>
-            <div class="form-row">
-                <label>Token <span class="badge @(_form.ApifyTokenIsSet ? "badge-done" : "badge-neutral")">@(_form.ApifyTokenIsSet ? "set" : "not set")</span></label>
-                <input type="password" placeholder="@(_form.ApifyTokenIsSet ? "•••••• (leave blank to keep)" : "enter Apify token")"
-                       @oninput="e => OnSecretInput(e, isApify: true)" />
+        <section class="col-lg-9 col-md-8">
+        <div class="card mb-3">
+            <div class="card-header"><h2 class="h5 mb-0">LLM Endpoint</h2></div>
+            <div class="card-body">
+                <p class="text-body-secondary small">Any OpenAI-compatible endpoint. Leave Base URL blank for hosted OpenAI, or point it at Ollama's <code>/v1</code>. Changes take effect on the next call — no restart.</p>
+                <div class="mb-3">
+                    <label class="form-label">Model</label>
+                    <InputText class="form-control" @bind-Value="_form.Model" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Base URL</label>
+                    <InputText class="form-control" @bind-Value="_form.BaseUrl" placeholder="(blank = https://api.openai.com)" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">API Key
+                        <span class="badge @(_form.ApiKeyIsSet ? "text-bg-success" : "text-bg-secondary")">@(_form.ApiKeyIsSet ? "set" : "not set")</span>
+                    </label>
+                    <input type="password" class="form-control" placeholder="@(_form.ApiKeyIsSet ? "•••••• (leave blank to keep)" : "enter API key")"
+                           @oninput="e => OnSecretInput(e, isApify: false)" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Request Timeout (seconds)</label>
+                    <InputNumber class="form-control" @bind-Value="_form.LlmRequestTimeoutSeconds" />
+                </div>
             </div>
-            <div class="form-row">
-                <label>Run Timeout (seconds)</label>
-                <InputNumber @bind-Value="_form.ApifyRunTimeoutSeconds" />
-            </div>
-        </section>
-
-        <section class="panel">
-            <h2>Library</h2>
-            <p class="muted small">Where OKF-HTML libraries are written. Changing this affects <strong>new</strong> projects only — existing project folders are not moved.</p>
-            <div class="form-row">
-                <label>Root Path</label>
-                <InputText @bind-Value="_form.LibraryRootPath" />
-            </div>
-        </section>
-
-        <section class="panel">
-            <h2>Workers</h2>
-            <div class="form-grid">
-                <div class="form-row"><label>Transcript poll (s)</label><InputNumber @bind-Value="_form.TranscriptIdlePollSeconds" /></div>
-                <div class="form-row"><label>Transcript retry cap</label><InputNumber @bind-Value="_form.TranscriptMaxRetryAttempts" /></div>
-                <div class="form-row"><label>Summary poll (s)</label><InputNumber @bind-Value="_form.SummaryIdlePollSeconds" /></div>
-                <div class="form-row"><label>Summary retry cap</label><InputNumber @bind-Value="_form.SummaryMaxRetryAttempts" /></div>
-                <div class="form-row"><label>Report poll (s)</label><InputNumber @bind-Value="_form.ReportIdlePollSeconds" /></div>
-                <div class="form-row"><label>Report debounce (s)</label><InputNumber @bind-Value="_form.ReportCoalesceDebounceSeconds" /></div>
-                <div class="form-row"><label>Report retry cap</label><InputNumber @bind-Value="_form.ReportMaxRetryAttempts" /></div>
-            </div>
-        </section>
-
-        <div class="actions">
-            <button type="submit" disabled="@_saving">@(_saving ? "Saving…" : "Save Settings")</button>
         </div>
+
+        <div class="card mb-3">
+            <div class="card-header"><h2 class="h5 mb-0">Apify</h2></div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Token
+                        <span class="badge @(_form.ApifyTokenIsSet ? "text-bg-success" : "text-bg-secondary")">@(_form.ApifyTokenIsSet ? "set" : "not set")</span>
+                    </label>
+                    <input type="password" class="form-control" placeholder="@(_form.ApifyTokenIsSet ? "•••••• (leave blank to keep)" : "enter Apify token")"
+                           @oninput="e => OnSecretInput(e, isApify: true)" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Run Timeout (seconds)</label>
+                    <InputNumber class="form-control" @bind-Value="_form.ApifyRunTimeoutSeconds" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header"><h2 class="h5 mb-0">Library</h2></div>
+            <div class="card-body">
+                <p class="text-body-secondary small">Where OKF-HTML libraries are written. Changing this affects <strong>new</strong> projects only — existing project folders are not moved.</p>
+                <div class="mb-3">
+                    <label class="form-label">Root Path</label>
+                    <InputText class="form-control" @bind-Value="_form.LibraryRootPath" />
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" disabled="@_saving">@(_saving ? "Saving…" : "Save Settings")</button>
 
         @if (_message is not null)
         {
-            <p class="@_messageClass">@_message</p>
+            <div class="alert @_alertClass mt-3">@_message</div>
         }
+        </section>
+      </div>
     </EditForm>
 }
 
@@ -84,7 +96,7 @@ else
     private SettingsForm? _form;
     private bool _saving;
     private string? _message;
-    private string _messageClass = "muted";
+    private string _alertClass = "alert-secondary";
 
     protected override async Task OnInitializedAsync() => _form = await SettingsService.LoadAsync();
 
@@ -105,13 +117,13 @@ else
             if (result.Ok)
             {
                 _message = "Settings saved. LLM/endpoint changes take effect on the next call.";
-                _messageClass = "success";
-                _form = await SettingsService.LoadAsync(); // refresh set/not-set badges
+                _alertClass = "alert-success";
+                _form = await SettingsService.LoadAsync();
             }
             else
             {
                 _message = result.Error;
-                _messageClass = "warn";
+                _alertClass = "alert-warning";
             }
         }
         finally

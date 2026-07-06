@@ -1,15 +1,36 @@
 @inherits LayoutComponentBase
 
-<div class="page">
-    <header class="topbar">
-        <a class="brand" href="/">Video Cortex</a>
-        <nav class="topnav">
-            <a href="/">Home</a>
-            <a href="/projects">Projects</a>
-            <a href="/settings">Settings</a>
-        </nav>
-    </header>
-    <main class="container">
+<header>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Video Cortex</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#vcNav"
+                    aria-controls="vcNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="vcNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Home</NavLink>
+                    </li>
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="projects">Projects</NavLink>
+                    </li>
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="settings">Settings</NavLink>
+                    </li>
+                </ul>
+                <button type="button" class="btn btn-sm btn-outline-light" title="Toggle light/dark"
+                        onclick="vcToggleTheme()">
+                    <i class="bi bi-circle-half"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<main class="main-content">
+    <div class="container-fluid px-4 py-3">
         @Body
-    </main>
-</div>
+    </div>
+</main>

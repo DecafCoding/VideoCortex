@@ -4,68 +4,72 @@
 @inject IVideoRetryCommand VideoRetry
 @inject IDesktopFileOpener FileOpener
 
-<div class="videos-header">
-    <h3>Videos @(_videos is not null ? $"({_videos.Count})" : "")</h3>
-    <button type="button" @onclick="RefreshAsync" disabled="@_loading">Refresh</button>
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h3 class="h5 mb-0">Videos @(_videos is not null ? $"({_videos.Count})" : "")</h3>
+    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync" disabled="@_loading">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
 </div>
 
 @if (_loading && _videos is null)
 {
-    <p class="muted">Loading…</p>
+    <p class="text-body-secondary">Loading…</p>
 }
 else if (_videos is null || _videos.Count == 0)
 {
-    <p class="muted">No videos in this project yet.</p>
+    <p class="text-body-secondary">No videos in this project yet.</p>
 }
 else
 {
-    <table class="videos">
-        <thead>
-            <tr><th>Video</th><th>Status</th><th>Added</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var v in _videos)
-            {
-                <tr>
-                    <td>
-                        @if (!string.IsNullOrWhiteSpace(v.Title))
-                        {
-                            @v.Title
-                        }
-                        else
-                        {
-                            <code>@v.YoutubeVideoId</code>
-                        }
-                        @if (ConceptPath(v) is { } path)
-                        {
-                            <button type="button" class="linklike small" @onclick="() => OpenConcept(path)"> open ↗</button>
-                        }
-                        @if (NeedsRetry(v) && !string.IsNullOrWhiteSpace(v.LastError))
-                        {
-                            <div class="warn small" title="@v.LastError">@Truncate(v.LastError!, 120)</div>
-                        }
-                    </td>
-                    <td><span class="badge @BadgeClass(v.Status)">@Label(v.Status)</span></td>
-                    <td class="meta">@v.AddedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                    <td>
-                        @if (NeedsRetry(v))
-                        {
-                            <button class="small" @onclick="() => RetryAsync(v.Id)" disabled="@_busy">Retry</button>
-                        }
-                        @if (_confirmingId == v.Id)
-                        {
-                            <button class="btn-danger small" @onclick="() => RemoveAsync(v.Id)" disabled="@_busy">Confirm</button>
-                            <button class="small" @onclick="() => _confirmingId = null" disabled="@_busy">Cancel</button>
-                        }
-                        else
-                        {
-                            <button class="small" @onclick="() => _confirmingId = v.Id">Remove</button>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr><th>Video</th><th>Status</th><th>Added</th><th class="text-end">Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var v in _videos)
+                {
+                    <tr>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(v.Title))
+                            {
+                                @v.Title
+                            }
+                            else
+                            {
+                                <code>@v.YoutubeVideoId</code>
+                            }
+                            @if (ConceptPath(v) is { } path)
+                            {
+                                <button type="button" class="linklike small ms-1" @onclick="() => OpenConcept(path)">open ↗</button>
+                            }
+                            @if (NeedsRetry(v) && !string.IsNullOrWhiteSpace(v.LastError))
+                            {
+                                <div class="text-danger small" title="@v.LastError">@Truncate(v.LastError!, 120)</div>
+                            }
+                        </td>
+                        <td><span class="badge @BadgeClass(v.Status)">@Label(v.Status)</span></td>
+                        <td class="text-body-secondary small">@v.AddedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="text-end text-nowrap">
+                            @if (NeedsRetry(v))
+                            {
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => RetryAsync(v.Id)" disabled="@_busy">Retry</button>
+                            }
+                            @if (_confirmingId == v.Id)
+                            {
+                                <button class="btn btn-sm btn-danger" @onclick="() => RemoveAsync(v.Id)" disabled="@_busy">Confirm</button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => _confirmingId = null" disabled="@_busy">Cancel</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => _confirmingId = v.Id">Remove</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 
 @code {
@@ -104,12 +108,6 @@ else
             _loading = false;
         }
     }
-
-    private static bool NeedsRetry(VideoRowDto v)
-        => v.Parked || v.Status is VideoStatus.Error or VideoStatus.NoTranscript;
-
-    private static string Truncate(string s, int max)
-        => s.Length <= max ? s : s[..max] + "…";
 
     private async Task RetryAsync(int videoId)
     {
@@ -150,6 +148,12 @@ else
 
     private void OpenConcept(string path) => FileOpener.TryOpen(path, out _);
 
+    private static bool NeedsRetry(VideoRowDto v)
+        => v.Parked || v.Status is VideoStatus.Error or VideoStatus.NoTranscript;
+
+    private static string Truncate(string s, int max)
+        => s.Length <= max ? s : s[..max] + "…";
+
     private static string Label(VideoStatus status) => status switch
     {
         VideoStatus.Added => "Added",
@@ -163,8 +167,9 @@ else
 
     private static string BadgeClass(VideoStatus status) => status switch
     {
-        VideoStatus.Published => "badge-done",
-        VideoStatus.NoTranscript or VideoStatus.Error => "badge-warn",
-        _ => "badge-neutral",
+        VideoStatus.Published => "text-bg-success",
+        VideoStatus.NoTranscript or VideoStatus.Error => "text-bg-danger",
+        VideoStatus.Summarized => "text-bg-info",
+        _ => "text-bg-secondary",
     };
 }

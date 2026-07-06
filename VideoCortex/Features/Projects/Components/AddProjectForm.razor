@@ -3,28 +3,30 @@
 <EditForm Model="@Model" OnValidSubmit="HandleSubmit" FormName="add-project">
     <DataAnnotationsValidator />
 
-    <div class="form-row">
-        <label for="name">Name</label>
-        <InputText id="name" @bind-Value="Model.Name" />
-        <ValidationMessage For="() => Model.Name" />
+    <div class="mb-3">
+        <label for="name" class="form-label">Name</label>
+        <InputText id="name" class="form-control" @bind-Value="Model.Name" />
+        <ValidationMessage For="() => Model.Name" class="text-danger small" />
     </div>
 
-    <div class="form-row">
-        <label for="description">Description</label>
-        <InputTextArea id="description" rows="2" @bind-Value="Model.Description" />
+    <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <InputTextArea id="description" class="form-control" rows="2" @bind-Value="Model.Description" />
     </div>
 
-    <div class="form-row">
-        <label for="ai">AI Instructions</label>
-        <InputTextArea id="ai" rows="2" @bind-Value="Model.AIInstructions" />
+    <div class="mb-3">
+        <label for="ai" class="form-label">AI Instructions</label>
+        <InputTextArea id="ai" class="form-control" rows="2" @bind-Value="Model.AIInstructions" />
     </div>
 
-    <button type="submit" disabled="@_busy">@(_busy ? "Creating…" : "Add Project")</button>
+    <button type="submit" class="btn btn-primary" disabled="@_busy">
+        @(_busy ? "Creating…" : "Add Project")
+    </button>
 </EditForm>
 
 @if (_message is not null)
 {
-    <p class="@_messageClass">@_message</p>
+    <div class="alert @_alertClass mt-3 mb-0 py-2">@_message</div>
 }
 
 @code {
@@ -33,7 +35,7 @@
     private ProjectFormModel Model { get; set; } = new();
     private bool _busy;
     private string? _message;
-    private string _messageClass = "muted";
+    private string _alertClass = "alert-secondary";
 
     private async Task HandleSubmit()
     {
@@ -46,13 +48,13 @@
             {
                 Model = new ProjectFormModel();
                 _message = "Project created.";
-                _messageClass = "success";
+                _alertClass = "alert-success";
                 await OnProjectAdded.InvokeAsync();
             }
             else
             {
                 _message = result.ErrorMessage ?? "Could not create the project.";
-                _messageClass = "warn";
+                _alertClass = "alert-warning";
             }
         }
         finally
