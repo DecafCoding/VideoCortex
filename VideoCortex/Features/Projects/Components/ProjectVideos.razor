@@ -2,6 +2,7 @@
 @inject IVideoQueries VideoQueries
 @inject IVideoCommands VideoCommands
 @inject IVideoRetryCommand VideoRetry
+@inject IDesktopFileOpener FileOpener
 
 <div class="videos-header">
     <h3>Videos @(_videos is not null ? $"({_videos.Count})" : "")</h3>
@@ -35,9 +36,9 @@ else
                         {
                             <code>@v.YoutubeVideoId</code>
                         }
-                        @if (ConceptHref(v) is { } href)
+                        @if (ConceptPath(v) is { } path)
                         {
-                            <a class="small" href="@href" target="_blank" rel="noopener"> open ↗</a>
+                            <button type="button" class="linklike small" @onclick="() => OpenConcept(path)"> open ↗</button>
                         }
                         @if (NeedsRetry(v) && !string.IsNullOrWhiteSpace(v.LastError))
                         {
@@ -141,11 +142,13 @@ else
         }
     }
 
-    private string? ConceptHref(VideoRowDto v)
+    private string? ConceptPath(VideoRowDto v)
     {
         if (string.IsNullOrWhiteSpace(v.ConceptSlug) || string.IsNullOrWhiteSpace(LibraryDir)) return null;
-        return new Uri(Path.Combine(LibraryDir, v.ConceptSlug + ".html")).AbsoluteUri;
+        return Path.Combine(LibraryDir, v.ConceptSlug + ".html");
     }
+
+    private void OpenConcept(string path) => FileOpener.TryOpen(path, out _);
 
     private static string Label(VideoStatus status) => status switch
     {

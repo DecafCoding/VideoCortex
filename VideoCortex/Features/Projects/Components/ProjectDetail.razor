@@ -5,6 +5,7 @@
 @inject IProjectService ProjectService
 @inject NavigationManager Nav
 @inject IOptions<LibrarySettings> LibraryOptions
+@inject IDesktopFileOpener FileOpener
 
 <PageTitle>@(_project?.Name ?? "Project") — Video Cortex</PageTitle>
 
@@ -31,7 +32,7 @@ else
     </p>
 
     <div class="actions">
-        <a class="btn-link" href="@_libraryUri" target="_blank" rel="noopener">Open Library ↗</a>
+        <button type="button" class="btn-link" @onclick="OpenLibrary">Open Library ↗</button>
         <button type="button" @onclick="RebuildReport" disabled="@_rebuilding">
             @(_rebuilding ? "Requesting…" : "Rebuild Report")
         </button>
@@ -40,6 +41,10 @@ else
     @if (_rebuildMessage is not null)
     {
         <p class="success">@_rebuildMessage</p>
+    }
+    @if (_openError is not null)
+    {
+        <p class="warn">@_openError</p>
     }
 
     <section class="panel">
@@ -85,11 +90,11 @@ else
     private bool _alsoDeleteFolder;
     private bool _deleting;
     private string? _error;
-    private string _libraryUri = string.Empty;
     private string _libraryPath = string.Empty;
     private string _libraryDir = string.Empty;
     private bool _rebuilding;
     private string? _rebuildMessage;
+    private string? _openError;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -99,11 +104,15 @@ else
         {
             _libraryDir = Path.Combine(LibraryOptions.Value.RootPath, _project.LibraryFolderName);
             _libraryPath = Path.Combine(_libraryDir, "index.html");
-            // file:// link so the on-disk library opens in a browser. Navigation from an
-            // http:// page may be blocked by the browser — the plain path is shown too.
-            _libraryUri = new Uri(_libraryPath).AbsoluteUri;
         }
         _loading = false;
+    }
+
+    private void OpenLibrary()
+    {
+        _openError = null;
+        if (!FileOpener.TryOpen(_libraryPath, out var error))
+            _openError = $"Couldn't open the library: {error}";
     }
 
     private async Task RebuildReport()

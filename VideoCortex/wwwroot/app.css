@@ -122,5 +122,16 @@ table.videos th { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
 .badge-done { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
 .badge-warn { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
 
+/* Buttons that should read as links (server-side "open on disk" actions). */
+.btn-link, .linklike {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+}
+.btn-link:hover, .linklike:hover { text-decoration: underline; }
+
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
 @media (max-width: 40rem) { .form-grid { grid-template-columns: 1fr; } }
