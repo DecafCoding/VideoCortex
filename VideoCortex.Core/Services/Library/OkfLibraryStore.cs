@@ -97,9 +97,11 @@ public sealed partial class OkfLibraryStore : IOkfLibraryStore
     }
 
     public async Task WriteReportAsync(
-        Project project, string libraryDescription, string reportHtml, CancellationToken ct = default)
+        Project project, string libraryDescription,
+        IReadOnlyList<ReportItem> items, IReadOnlyList<ReportSource> sources, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(items);
 
         var dir = Path.Combine(_rootPath, SanitizeFolderName(project.Name));
         Directory.CreateDirectory(dir);
@@ -113,11 +115,53 @@ public sealed partial class OkfLibraryStore : IOkfLibraryStore
         html = html.Replace("{{THEME_HREF}}", "theme.css");
         html = html.Replace("{{LIBRARY_DESCRIPTION}}", WebUtility.HtmlEncode(libraryDescription ?? string.Empty));
 
-        // Replace the sample index-group region with the LLM-authored report body (injected raw —
-        // it is meant to be HTML). MatchEvaluator avoids Regex '$' substitution in the body.
-        html = IndexGroupBlock().Replace(html, _ => "\n    " + reportHtml);
+        // Replace the sample index-group region with the rendered running list. MatchEvaluator
+        // avoids Regex '$' substitution in the body.
+        var body = RenderReportBody(items, sources ?? Array.Empty<ReportSource>());
+        html = IndexGroupBlock().Replace(html, _ => "\n    " + body);
 
         await AtomicWriteTextAsync(Path.Combine(dir, "index.html"), html, ct);
+    }
+
+    /// <summary>
+    /// Renders the aggregated items into the report's inner body: one <c>&lt;h2&gt;</c> per item, its
+    /// Markdig-rendered body, then a "Sources" line of relative concept links. Item titles and source
+    /// link text are HTML-encoded; the Markdown body is rendered like a concept page. A source slug is
+    /// only linked when it resolves to a known concept (via <paramref name="sources"/>), so a stray or
+    /// hallucinated slug can never produce a broken or foreign link.
+    /// </summary>
+    private static string RenderReportBody(IReadOnlyList<ReportItem> items, IReadOnlyList<ReportSource> sources)
+    {
+        var titleBySlug = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var s in sources)
+            if (!string.IsNullOrWhiteSpace(s.Slug))
+                titleBySlug[s.Slug] = s.Title;
+
+        var sb = new StringBuilder();
+        foreach (var item in items)
+        {
+            sb.Append("<h2>").Append(WebUtility.HtmlEncode(item.Title.Trim())).Append("</h2>\n");
+            sb.Append(Markdown.ToHtml(item.BodyMarkdown ?? string.Empty, MarkdigPipeline));
+
+            var links = (item.SourceSlugs ?? Array.Empty<string>())
+                .Select(NormalizeSlug)
+                .Where(titleBySlug.ContainsKey)
+                .Distinct(StringComparer.Ordinal)
+                .Select(slug => $"<a href=\"{slug}.html\">{WebUtility.HtmlEncode(titleBySlug[slug])}</a>")
+                .ToList();
+            if (links.Count > 0)
+                sb.Append("<p class=\"okf-sources\"><strong>Sources:</strong> ")
+                  .Append(string.Join(", ", links))
+                  .Append("</p>\n");
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>Tolerates a model that appends ".html" to a source slug; strips it so it can match.</summary>
+    private static string NormalizeSlug(string slug)
+    {
+        slug = slug.Trim();
+        return slug.EndsWith(".html", StringComparison.OrdinalIgnoreCase) ? slug[..^5] : slug;
     }
 
     public Task DeleteConceptPageAsync(Project project, Video video, CancellationToken ct = default)

@@ -1,12 +1,22 @@
 @using System.IO
+@implements IDisposable
 @inject IVideoQueries VideoQueries
 @inject IVideoCommands VideoCommands
 @inject IVideoRetryCommand VideoRetry
 @inject IDesktopFileOpener FileOpener
 
 <div class="d-flex justify-content-between align-items-center mb-2">
-    <h3 class="h5 mb-0">Videos @(_videos is not null ? $"({_videos.Count})" : "")</h3>
-    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync" disabled="@_loading">
+    <h3 class="h5 mb-0">
+        Videos @(_videos is not null ? $"({_videos.Count})" : "")
+        @if (_polling)
+        {
+            <span class="text-body-secondary small ms-2">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Processing…
+            </span>
+        }
+    </h3>
+    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => RefreshAsync()" disabled="@_loading">
         <i class="bi bi-arrow-clockwise"></i> Refresh
     </button>
 </div>
@@ -48,7 +58,13 @@ else
                                 <div class="text-danger small" title="@v.LastError">@Truncate(v.LastError!, 120)</div>
                             }
                         </td>
-                        <td><span class="badge @BadgeClass(v.Status)">@Label(v.Status)</span></td>
+                        <td>
+                            <span class="badge @BadgeClass(v.Status)">@Label(v.Status)</span>
+                            @if (IsInProgress(v))
+                            {
+                                <span class="spinner-border spinner-border-sm text-body-secondary ms-1" style="width:.75rem;height:.75rem;" role="status" aria-hidden="true"></span>
+                            }
+                        </td>
                         <td class="text-body-secondary small">@v.AddedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                         <td class="text-end text-nowrap">
                             @if (NeedsRetry(v))
@@ -81,11 +97,16 @@ else
     /// <summary>Invoked after a video is removed, so the parent can refresh related state.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
+    /// <summary>How often to re-poll the database while videos are still being processed.</summary>
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
+
     private IReadOnlyList<VideoRowDto>? _videos;
     private bool _loading;
     private bool _busy;
     private int? _confirmingId;
     private int _loadedProjectId;
+    private System.Timers.Timer? _pollTimer;
+    private bool _polling;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -96,18 +117,65 @@ else
         }
     }
 
-    public async Task RefreshAsync()
+    /// <param name="showLoading">
+    /// True for user-initiated refreshes (disables the Refresh button); false for silent background polls.
+    /// </param>
+    public async Task RefreshAsync(bool showLoading = true)
     {
-        _loading = true;
+        if (showLoading) _loading = true;
         try
         {
             _videos = await VideoQueries.ListForProjectAsync(ProjectId);
         }
         finally
         {
-            _loading = false;
+            if (showLoading) _loading = false;
+        }
+        UpdatePolling();
+    }
+
+    /// <summary>Starts background polling while any video is mid-pipeline; stops it once everything settles.</summary>
+    private void UpdatePolling()
+    {
+        var shouldPoll = _videos?.Any(IsInProgress) ?? false;
+        if (shouldPoll == _polling) return;
+
+        _polling = shouldPoll;
+        if (shouldPoll)
+        {
+            _pollTimer = new System.Timers.Timer(PollInterval.TotalMilliseconds) { AutoReset = true };
+            _pollTimer.Elapsed += OnPollElapsed;
+            _pollTimer.Start();
+        }
+        else
+        {
+            StopTimer();
         }
     }
+
+    private async void OnPollElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        // Timer fires on a thread-pool thread; marshal back onto the render sync context.
+        await InvokeAsync(async () =>
+        {
+            await RefreshAsync(showLoading: false);
+            StateHasChanged();
+        });
+    }
+
+    private void StopTimer()
+    {
+        if (_pollTimer is null) return;
+        _pollTimer.Elapsed -= OnPollElapsed;
+        _pollTimer.Dispose();
+        _pollTimer = null;
+    }
+
+    /// <summary>A video still moving through the pipeline (waiting on a worker), so the row should keep refreshing.</summary>
+    private static bool IsInProgress(VideoRowDto v)
+        => !v.Parked && v.Status is VideoStatus.Added or VideoStatus.Transcribed or VideoStatus.Summarized;
+
+    public void Dispose() => StopTimer();
 
     private async Task RetryAsync(int videoId)
     {

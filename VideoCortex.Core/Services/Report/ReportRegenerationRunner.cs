@@ -62,9 +62,15 @@ public sealed class ReportRegenerationRunner(
 
             var result = await synthesizer.SynthesizeAsync(ctx, ct);
 
+            // Map each eligible video's concept slug to a display title so the report can render
+            // readable per-item "Sources" links (and only ever link real concept pages).
+            var sources = eligible
+                .Select(v => new ReportSource(v.ConceptSlug!, v.SummaryTitle ?? v.Title ?? v.YoutubeVideoId))
+                .ToList();
+
             // Success — write the report, then fold videos in. (Write before status flip; a write
             // failure throws and routes to the failure path without advancing anything.)
-            await library.WriteReportAsync(project, result.LibraryDescription, result.ReportHtml, ct);
+            await library.WriteReportAsync(project, result.LibraryDescription, result.Items, sources, ct);
 
             var folded = 0;
             var now = DateTime.UtcNow;

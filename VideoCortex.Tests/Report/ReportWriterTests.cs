@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using FluentAssertions;
 using VideoCortex.Core.Entities;
 using VideoCortex.Core.Services.Library;
+using VideoCortex.Core.Services.Llm;
 
 namespace VideoCortex.Tests.Report;
 
@@ -18,9 +19,17 @@ public class ReportWriterTests : IDisposable
         try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
     }
 
-    private const string ReportBody =
-        "<h2>Theme A</h2><p>Point with a citation <a href=\"vid-a.html\">Vid A</a>.</p>" +
-        "<section><h2>Sources</h2><ul><li><a href=\"vid-a.html\">Vid A</a> — about A</li></ul></section>";
+    private static readonly List<ReportItem> ReportItems =
+    [
+        new("Theme A", "Point with detail about A.", ["vid-a"]),
+        new("Theme B", "Point covered by two videos.", ["vid-a", "vid-b"]),
+    ];
+
+    private static readonly List<ReportSource> Sources =
+    [
+        new("vid-a", "Vid A"),
+        new("vid-b", "Vid B"),
+    ];
 
     [Fact]
     public async Task WriteReport_Produces_Conformant_Index()
@@ -29,16 +38,18 @@ public class ReportWriterTests : IDisposable
         // exercise HTML-escaping go in the description (a parameter), not the folder name.
         var project = new Project { Name = "R & D Notes", Slug = "r-d-notes", CreatedAt = DateTime.UtcNow };
         await _store.CreateLibraryAsync(project);
-        await _store.WriteReportAsync(project, "About <R&D> & more.", ReportBody);
+        await _store.WriteReportAsync(project, "About <R&D> & more.", ReportItems, Sources);
 
         var html = File.ReadAllText(Path.Combine(_root, "R & D Notes", "index.html"));
 
         html.Should().NotContain("{{");
         html.Should().Contain("href=\"theme.css\"").And.NotContain("href=\"/theme.css\"");
-        html.Should().Contain("<h2>Theme A</h2>");                       // thematic section
-        html.Should().Contain("<h2>Sources</h2>");                        // Sources section
-        html.Should().Contain("href=\"vid-a.html\"");                     // relative concept link
+        html.Should().Contain("<h2>Theme A</h2>").And.Contain("<h2>Theme B</h2>"); // one heading per item
+        html.Should().Contain("<strong>Sources:</strong>");                        // per-item sources line
+        html.Should().Contain("href=\"vid-a.html\"").And.Contain(">Vid A</a>");     // relative link w/ title text
         html.Should().NotContain("href=\"/vid-a.html\"");
+        // The item covered by two videos cites both.
+        html.Should().Contain("href=\"vid-b.html\"");
 
         // Scalar placeholders are escaped in HTML context (not raw).
         html.Should().Contain("<h1>R &amp; D Notes</h1>");
@@ -57,8 +68,8 @@ public class ReportWriterTests : IDisposable
     {
         var project = new Project { Name = "Proj", Slug = "proj", CreatedAt = DateTime.UtcNow };
         await _store.CreateLibraryAsync(project);
-        await _store.WriteReportAsync(project, "first", "<h2>One</h2>");
-        await _store.WriteReportAsync(project, "second", "<h2>Two</h2>");
+        await _store.WriteReportAsync(project, "first", [new("One", "body one", [])], []);
+        await _store.WriteReportAsync(project, "second", [new("Two", "body two", [])], []);
 
         var html = File.ReadAllText(Path.Combine(_root, "Proj", "index.html"));
         html.Should().Contain("<h2>Two</h2>").And.NotContain("<h2>One</h2>");

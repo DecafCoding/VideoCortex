@@ -86,7 +86,11 @@ else
             <h1 class="mb-1">@_project.Name</h1>
             @if (!string.IsNullOrWhiteSpace(_project.Description))
             {
-                <p class="mb-1">@_project.Description</p>
+                <p class="mb-1"><strong>Description:</strong> @_project.Description</p>
+            }
+            @if (!string.IsNullOrWhiteSpace(_project.AIInstructions))
+            {
+                <p class="mb-1"><strong>AI Instructions:</strong> @_project.AIInstructions</p>
             }
             <p class="text-body-secondary small mb-1">
                 Created @_project.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd") · Status: @_project.Status
