@@ -1,6 +1,7 @@
 @using System.IO
 @inject IVideoQueries VideoQueries
 @inject IVideoCommands VideoCommands
+@inject IVideoRetryCommand VideoRetry
 
 <div class="videos-header">
     <h3>Videos @(_videos is not null ? $"({_videos.Count})" : "")</h3>
@@ -38,10 +39,18 @@ else
                         {
                             <a class="small" href="@href" target="_blank" rel="noopener"> open ↗</a>
                         }
+                        @if (NeedsRetry(v) && !string.IsNullOrWhiteSpace(v.LastError))
+                        {
+                            <div class="warn small" title="@v.LastError">@Truncate(v.LastError!, 120)</div>
+                        }
                     </td>
                     <td><span class="badge @BadgeClass(v.Status)">@Label(v.Status)</span></td>
                     <td class="meta">@v.AddedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                     <td>
+                        @if (NeedsRetry(v))
+                        {
+                            <button class="small" @onclick="() => RetryAsync(v.Id)" disabled="@_busy">Retry</button>
+                        }
                         @if (_confirmingId == v.Id)
                         {
                             <button class="btn-danger small" @onclick="() => RemoveAsync(v.Id)" disabled="@_busy">Confirm</button>
@@ -92,6 +101,27 @@ else
         finally
         {
             _loading = false;
+        }
+    }
+
+    private static bool NeedsRetry(VideoRowDto v)
+        => v.Parked || v.Status is VideoStatus.Error or VideoStatus.NoTranscript;
+
+    private static string Truncate(string s, int max)
+        => s.Length <= max ? s : s[..max] + "…";
+
+    private async Task RetryAsync(int videoId)
+    {
+        _busy = true;
+        try
+        {
+            await VideoRetry.RetryVideoAsync(videoId);
+            await RefreshAsync();
+            await OnChanged.InvokeAsync();
+        }
+        finally
+        {
+            _busy = false;
         }
     }
 

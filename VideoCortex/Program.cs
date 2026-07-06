@@ -10,6 +10,7 @@ using VideoCortex.Core.Services.Summary;
 using VideoCortex.Core.Services.Transcripts;
 using VideoCortex.Core.Services.Triage;
 using VideoCortex.Features.Projects.Services;
+using VideoCortex.Features.Settings.Services;
 using VideoCortex.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -47,8 +48,16 @@ builder.Services.AddSingleton<IOkfLibraryStore>(sp =>
     return new OkfLibraryStore(root, templatesDir);
 });
 builder.Services.AddScoped<IProjectService, ProjectService>();
+
+// Writable config overlay + settings service. Overlay is a singleton so its write-serializing
+// SemaphoreSlim is shared. Edits land in %USERPROFILE%\.videocortex\appsettings.Local.json,
+// which is layered with reloadOnChange — so LLM/endpoint changes are live without a restart.
+builder.Services.AddSingleton<IOverlayWriter>(_ => new OverlayWriter(VideoCortexPaths.OverlayPath));
+builder.Services.AddScoped<ISettingsService, SettingsService>();
+
 builder.Services.AddScoped<IVideoCommands, VideoCommands>();
 builder.Services.AddScoped<IVideoQueries, VideoQueries>();
+builder.Services.AddScoped<IVideoRetryCommand, VideoRetryCommand>();
 
 // Transcript pipeline stage: typed HttpClient source (Apify) + scoped per-video runner +
 // the polling background worker. The typed-client registration also registers ITranscriptSource.

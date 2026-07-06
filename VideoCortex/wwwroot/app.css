@@ -121,3 +121,6 @@ table.videos th { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
 .badge-neutral { background: #f6f8fa; color: #444; }
 .badge-done { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
 .badge-warn { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
+@media (max-width: 40rem) { .form-grid { grid-template-columns: 1fr; } }

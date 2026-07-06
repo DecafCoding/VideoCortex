@@ -1,0 +1,122 @@
+@page "/settings"
+@inject ISettingsService SettingsService
+
+<PageTitle>Settings — Video Cortex</PageTitle>
+
+<h1>Settings</h1>
+
+@if (_form is null)
+{
+    <p class="muted">Loading…</p>
+}
+else
+{
+    <EditForm Model="_form" OnValidSubmit="SaveAsync">
+        <section class="panel">
+            <h2>LLM Endpoint</h2>
+            <p class="muted small">Any OpenAI-compatible endpoint. Leave Base URL blank for hosted OpenAI, or point it at Ollama's <code>/v1</code>. Changes take effect on the next call — no restart.</p>
+            <div class="form-row">
+                <label>Model</label>
+                <InputText @bind-Value="_form.Model" />
+            </div>
+            <div class="form-row">
+                <label>Base URL</label>
+                <InputText @bind-Value="_form.BaseUrl" placeholder="(blank = https://api.openai.com)" />
+            </div>
+            <div class="form-row">
+                <label>API Key <span class="badge @(_form.ApiKeyIsSet ? "badge-done" : "badge-neutral")">@(_form.ApiKeyIsSet ? "set" : "not set")</span></label>
+                <input type="password" placeholder="@(_form.ApiKeyIsSet ? "•••••• (leave blank to keep)" : "enter API key")"
+                       @oninput="e => OnSecretInput(e, isApify: false)" />
+            </div>
+            <div class="form-row">
+                <label>Request Timeout (seconds)</label>
+                <InputNumber @bind-Value="_form.LlmRequestTimeoutSeconds" />
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Apify</h2>
+            <div class="form-row">
+                <label>Token <span class="badge @(_form.ApifyTokenIsSet ? "badge-done" : "badge-neutral")">@(_form.ApifyTokenIsSet ? "set" : "not set")</span></label>
+                <input type="password" placeholder="@(_form.ApifyTokenIsSet ? "•••••• (leave blank to keep)" : "enter Apify token")"
+                       @oninput="e => OnSecretInput(e, isApify: true)" />
+            </div>
+            <div class="form-row">
+                <label>Run Timeout (seconds)</label>
+                <InputNumber @bind-Value="_form.ApifyRunTimeoutSeconds" />
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Library</h2>
+            <p class="muted small">Where OKF-HTML libraries are written. Changing this affects <strong>new</strong> projects only — existing project folders are not moved.</p>
+            <div class="form-row">
+                <label>Root Path</label>
+                <InputText @bind-Value="_form.LibraryRootPath" />
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Workers</h2>
+            <div class="form-grid">
+                <div class="form-row"><label>Transcript poll (s)</label><InputNumber @bind-Value="_form.TranscriptIdlePollSeconds" /></div>
+                <div class="form-row"><label>Transcript retry cap</label><InputNumber @bind-Value="_form.TranscriptMaxRetryAttempts" /></div>
+                <div class="form-row"><label>Summary poll (s)</label><InputNumber @bind-Value="_form.SummaryIdlePollSeconds" /></div>
+                <div class="form-row"><label>Summary retry cap</label><InputNumber @bind-Value="_form.SummaryMaxRetryAttempts" /></div>
+                <div class="form-row"><label>Report poll (s)</label><InputNumber @bind-Value="_form.ReportIdlePollSeconds" /></div>
+                <div class="form-row"><label>Report debounce (s)</label><InputNumber @bind-Value="_form.ReportCoalesceDebounceSeconds" /></div>
+                <div class="form-row"><label>Report retry cap</label><InputNumber @bind-Value="_form.ReportMaxRetryAttempts" /></div>
+            </div>
+        </section>
+
+        <div class="actions">
+            <button type="submit" disabled="@_saving">@(_saving ? "Saving…" : "Save Settings")</button>
+        </div>
+
+        @if (_message is not null)
+        {
+            <p class="@_messageClass">@_message</p>
+        }
+    </EditForm>
+}
+
+@code {
+    private SettingsForm? _form;
+    private bool _saving;
+    private string? _message;
+    private string _messageClass = "muted";
+
+    protected override async Task OnInitializedAsync() => _form = await SettingsService.LoadAsync();
+
+    private void OnSecretInput(ChangeEventArgs e, bool isApify)
+    {
+        var value = e.Value?.ToString() ?? string.Empty;
+        if (isApify) { _form!.ApifyToken = value; _form.ApifyTokenDirty = true; }
+        else { _form!.ApiKey = value; _form.ApiKeyDirty = true; }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _message = null;
+        try
+        {
+            var result = await SettingsService.SaveAsync(_form!);
+            if (result.Ok)
+            {
+                _message = "Settings saved. LLM/endpoint changes take effect on the next call.";
+                _messageClass = "success";
+                _form = await SettingsService.LoadAsync(); // refresh set/not-set badges
+            }
+            else
+            {
+                _message = result.Error;
+                _messageClass = "warn";
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}
