@@ -53,7 +53,7 @@ dotnet user-secrets set "Apify:Token" "apify_api_..."
 dotnet user-secrets set "Llm:ApiKey"  "sk-..."
 ```
 
-At runtime, settings can also be written to a hot-reloaded overlay at `~/.videocortex/appsettings.Local.json`.
+At runtime, edit everything from the in-app **Settings** page (`/settings`), which writes a hot-reloaded overlay at `~/.videocortex/appsettings.Local.json` — LLM model/endpoint/key changes take effect on the next call with no restart. Secrets show as "set / not set" and are never echoed back.
 
 ## Configuration
 
@@ -98,6 +98,8 @@ Built in phases (see `docs/phases/` and `docs/progress.md`):
 - ✅ **Phase 4** — Transcript worker: Apify transcript + metadata, ingest runner, polling worker
 - ✅ **Phase 5** — Summary → concept page: OpenAI-compatible client, video summarizer, OKF concept-page writer, summary worker
 - ✅ **Phase 6** — Report → root index: cross-video synthesizer, debounced report worker, OKF root-index writer, rebuild/open/remove UI
-- ⬜ **Phase 7** — Settings page + resilience polish
+- ✅ **Phase 7** — Settings & resilience: in-app `/settings` (writable overlay + hot reload, no restart), per-video Retry for parked/errored videos
+
+**The MVP is complete.** Configure everything from the **Settings** page (`/settings`) — Apify token, LLM model/endpoint/key, library root, and worker knobs — with LLM/endpoint changes taking effect without a restart. Parked or failed videos surface their error on the project page with a one-click **Retry**.
 
 See [`docs/prd.md`](docs/prd.md) for the full product spec and [`CLAUDE.md`](CLAUDE.md) for contributor conventions.

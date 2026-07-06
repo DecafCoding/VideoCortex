@@ -11,6 +11,7 @@ public sealed class VideoQueries(VideoCortexDbContext db) : IVideoQueries
         => await db.Videos.AsNoTracking()
             .Where(v => v.ProjectId == projectId)
             .OrderByDescending(v => v.AddedAt)
-            .Select(v => new VideoRowDto(v.Id, v.YoutubeVideoId, v.Title, v.Status, v.AddedAt, v.ConceptSlug))
+            .Select(v => new VideoRowDto(
+                v.Id, v.YoutubeVideoId, v.Title, v.Status, v.AddedAt, v.ConceptSlug, v.Parked, v.LastError))
             .ToListAsync(ct);
 }
