@@ -1,17 +1,22 @@
 @inject IVideoCommands VideoCommands
 
 <EditForm Model="@Model" OnValidSubmit="HandleSubmit" FormName="add-video">
-    <div class="add-video-row">
-        <InputText @bind-Value="Model.Input" placeholder="YouTube URL or video ID" disabled="@_busy" />
-        <button type="submit" disabled="@_busy">@(_busy ? "Adding…" : "Add Video")</button>
+    <div class="input-group">
+        <InputText class="form-control" @bind-Value="Model.Input"
+                   placeholder="YouTube URL or video ID" disabled="@_busy" />
+        <button type="submit" class="btn btn-primary" disabled="@_busy">
+            @(_busy ? "Adding…" : "Add Video")
+        </button>
     </div>
 </EditForm>
 
-<p class="muted small">Pasted videos are queued for processing; the transcript and summary are fetched later.</p>
+<p class="text-body-secondary small mt-1 mb-0">
+    Pasted videos are queued for processing; the transcript and summary are fetched later.
+</p>
 
 @if (_message is not null)
 {
-    <p class="@_messageClass">@_message</p>
+    <div class="alert @_alertClass mt-2 mb-0 py-2">@_message</div>
 }
 
 @code {
@@ -21,7 +26,7 @@
     private AddInputModel Model { get; set; } = new();
     private bool _busy;
     private string? _message;
-    private string _messageClass = "muted";
+    private string _alertClass = "alert-secondary";
 
     private async Task HandleSubmit()
     {
@@ -37,16 +42,12 @@
                 case AddVideoOutcome.Added:
                     Model = new AddInputModel();
                     _message = $"Added {result.YoutubeVideoId}.";
-                    _messageClass = "success";
+                    _alertClass = "alert-success";
                     await OnVideoAdded.InvokeAsync();
-                    break;
-                case AddVideoOutcome.DuplicateInProject:
-                    _message = result.Message;
-                    _messageClass = "warn";
                     break;
                 default:
                     _message = result.Message;
-                    _messageClass = "warn";
+                    _alertClass = "alert-warning";
                     break;
             }
         }

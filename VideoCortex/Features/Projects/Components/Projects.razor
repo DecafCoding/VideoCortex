@@ -3,39 +3,49 @@
 
 <PageTitle>Projects — Video Cortex</PageTitle>
 
-<h1>Projects</h1>
+<div class="row">
+    <aside class="col-lg-3 col-md-4 sidebar-content mb-3">
+        <div class="card">
+            <div class="card-header"><h2 class="h5 mb-0">New Project</h2></div>
+            <div class="card-body">
+                <AddProjectForm OnProjectAdded="ReloadAsync" />
+            </div>
+        </div>
+    </aside>
 
-<section class="panel">
-    <h2>New Project</h2>
-    <AddProjectForm OnProjectAdded="ReloadAsync" />
-</section>
-
-<section>
-    @if (_projects is null)
-    {
-        <p class="muted">Loading…</p>
-    }
-    else if (_projects.Count == 0)
-    {
-        <p class="muted">No projects yet. Create one above.</p>
-    }
-    else
-    {
-        <ul class="cards">
-            @foreach (var p in _projects)
-            {
-                <li class="card">
-                    <a class="card-title" href="@($"/projects/{p.Slug}")">@p.Name</a>
-                    @if (!string.IsNullOrWhiteSpace(p.Description))
-                    {
-                        <p class="muted">@p.Description</p>
-                    }
-                    <p class="meta">@p.VideoCount video(s)</p>
-                </li>
-            }
-        </ul>
-    }
-</section>
+    <section class="col-lg-9 col-md-8">
+        @if (_projects is null)
+        {
+            <p class="text-body-secondary">Loading…</p>
+        }
+        else if (_projects.Count == 0)
+        {
+            <div class="alert alert-info">No projects yet. Create one using the form on the left.</div>
+        }
+        else
+        {
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 row-cols-xxl-4 g-3">
+                @foreach (var p in _projects)
+                {
+                    <div class="col">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h3 class="h6 card-title">
+                                    <a href="@($"projects/{p.Slug}")" class="stretched-link text-decoration-none">@p.Name</a>
+                                </h3>
+                                @if (!string.IsNullOrWhiteSpace(p.Description))
+                                {
+                                    <p class="card-text text-body-secondary small">@p.Description</p>
+                                }
+                                <span class="badge text-bg-secondary">@p.VideoCount video(s)</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+</div>
 
 @code {
     private IReadOnlyList<ProjectSummaryDto>? _projects;
