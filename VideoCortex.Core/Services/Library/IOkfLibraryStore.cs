@@ -42,12 +42,17 @@ public interface IOkfLibraryStore
     Task<string> WriteConceptPageAsync(Project project, Video video, VideoSummary summary, CancellationToken ct = default);
 
     /// <summary>
-    /// (Re)writes the project's root <c>index.html</c> as the synthesized report: wraps the
-    /// LLM-authored inner-body <paramref name="reportHtml"/> in the OKF root-index template
-    /// (<c>okf-meta</c> <c>type: "Index"</c>, <c>okf_html_version: "0.1"</c>, relative
-    /// <c>theme.css</c>). Written atomically, so a good prior file is never left half-overwritten.
+    /// (Re)writes the project's root <c>index.html</c> as the aggregated report: renders
+    /// <paramref name="items"/> into a running list (one <c>&lt;h2&gt;</c> + Markdig body + a
+    /// per-item "Sources" line linking each cited concept page) and wraps it in the OKF root-index
+    /// template (<c>okf-meta</c> <c>type: "Index"</c>, <c>okf_html_version: "0.1"</c>, relative
+    /// <c>theme.css</c>). <paramref name="sources"/> maps each concept slug to a display title for
+    /// the source links; item slugs not present in it are dropped (no broken/foreign links). Written
+    /// atomically, so a good prior file is never left half-overwritten.
     /// </summary>
-    Task WriteReportAsync(Project project, string libraryDescription, string reportHtml, CancellationToken ct = default);
+    Task WriteReportAsync(
+        Project project, string libraryDescription,
+        IReadOnlyList<ReportItem> items, IReadOnlyList<ReportSource> sources, CancellationToken ct = default);
 
     /// <summary>
     /// Deletes a video's concept page (<c>&lt;ConceptSlug&gt;.html</c>) from the project folder.
@@ -56,3 +61,9 @@ public interface IOkfLibraryStore
     /// </summary>
     Task DeleteConceptPageAsync(Project project, Video video, CancellationToken ct = default);
 }
+
+/// <summary>
+/// A concept page a report item may cite: its <paramref name="Slug"/> (the on-disk file stem) and a
+/// human <paramref name="Title"/> used as the link text in the report's per-item "Sources" line.
+/// </summary>
+public sealed record ReportSource(string Slug, string Title);

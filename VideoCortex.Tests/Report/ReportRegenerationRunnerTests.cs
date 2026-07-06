@@ -66,7 +66,7 @@ public class ReportRegenerationRunnerTests : IDisposable
     }
 
     private static FakeSynthesizer OkSynth() =>
-        new() { Result = new ReportSynthesisResult("desc", "<h2>Theme</h2><section><h2>Sources</h2></section>") };
+        new() { Result = new ReportSynthesisResult("desc", [new("Theme", "body text", ["vid-0", "vid-1"])]) };
 
     [Fact]
     public async Task No_Eligible_Summaries_Is_NoOp_And_Clears_Dirty()
@@ -105,7 +105,9 @@ public class ReportRegenerationRunnerTests : IDisposable
         verify.Videos.Where(v => v.ProjectId == id).Should().OnlyContain(v => v.Status == VideoStatus.Published);
 
         var html = File.ReadAllText(Path.Combine(_root, "Proj", "index.html"));
-        html.Should().Contain("<h2>Theme</h2>").And.Contain("<h2>Sources</h2>");
+        // The item heading plus a per-item Sources line linking the seeded concept pages.
+        html.Should().Contain("<h2>Theme</h2>").And.Contain("<strong>Sources:</strong>");
+        html.Should().Contain("href=\"vid-0.html\"").And.Contain("href=\"vid-1.html\"");
     }
 
     [Fact]

@@ -9,10 +9,11 @@ using VideoCortex.Core.Services.Config;
 namespace VideoCortex.Core.Services.Llm;
 
 /// <summary>
-/// Synthesizes a project's report via an OpenAI-compatible endpoint (reusing the Phase-5
-/// <see cref="OpenAiClient"/> transport) with strict structured output. The model returns
-/// <b>inner body HTML only</b> for <c>report_html</c> — the OKF root-index skeleton, <c>okf-meta</c>,
-/// and <c>&lt;h1&gt;</c> are supplied deterministically by <c>OkfLibraryStore.WriteReportAsync</c>.
+/// Aggregates a project's report via an OpenAI-compatible endpoint (reusing the Phase-5
+/// <see cref="OpenAiClient"/> transport) with strict structured output. The model returns a
+/// structured, deduplicated list of <c>items</c> (never HTML) — the OKF root-index skeleton,
+/// <c>okf-meta</c>, <c>&lt;h1&gt;</c>, and the per-item HTML (heading, body, "Sources" line) are all
+/// rendered deterministically by <c>OkfLibraryStore.WriteReportAsync</c>.
 /// </summary>
 public sealed class OpenAiReportSynthesizer(
     IOptionsMonitor<LlmSettings> llm,
@@ -20,19 +21,30 @@ public sealed class OpenAiReportSynthesizer(
     ILogger<OpenAiReportSynthesizer> logger) : IReportSynthesizer
 {
     private const string SystemPrompt =
-        "You write a synthesized, multi-section report covering a set of YouTube videos that a " +
-        "user has collected into one research project. You are given each video's compact summary " +
-        "(not its transcript). Produce a briefing that reads as a coherent whole across the videos.\n\n" +
+        "You build a project's INDEX: a single cumulative, deduplicated list of atomic items " +
+        "aggregated across a set of YouTube videos the user collected. You are given each video's " +
+        "compact summary (not its transcript).\n\n" +
+        "The project-specific instructions define what one \"item\" is and what information to " +
+        "capture for it (e.g. one item per topic, tool, recipe, argument, …). TREAT THOSE " +
+        "INSTRUCTIONS AS YOUR PRIMARY DIRECTIVE — they determine the shape of the list. If no " +
+        "instructions are given, treat each distinct key topic or takeaway as one item.\n\n" +
+        "Rules for the list:\n" +
+        "- BE EXHAUSTIVE. Include every distinct item from every video. Do NOT thematically group, " +
+        "compress, summarize away, or drop items. If the videos collectively cover 30 distinct " +
+        "items, return about 30 items — this is an aggregation, not a summary of a summary.\n" +
+        "- MERGE DUPLICATES. When two or more videos cover the SAME item, output ONE item that " +
+        "combines the information from all of them, and list the concept slug of every source video " +
+        "in source_slugs. Items that are merely similar (not the same) stay separate.\n" +
+        "- Order items logically (related items near each other is fine), but every item stands alone.\n\n" +
         "Return JSON matching the schema:\n" +
         "- library_description: one plain-text sentence (<= 200 chars) describing the project as a whole.\n" +
-        "- report_html: INNER BODY HTML ONLY. Do NOT emit <!doctype>, <html>, <head>, <body>, an " +
-        "okf-meta block, or a top-level <h1> — those are added by the page wrapper. Organize the " +
-        "report into thematic sections, each introduced by an <h2>. Where a claim comes from a " +
-        "specific video, cite it inline with a RELATIVE link to that video's concept page: " +
-        "<a href=\"CONCEPT_SLUG.html\">…</a> (use the exact concept slug given for each video; never " +
-        "an absolute or http link). END with a <section> whose first child is <h2>Sources</h2> " +
-        "containing a <ul> with one <li> per video: a relative link to its concept page plus a " +
-        "one-line description.";
+        "- items: the list. For each item:\n" +
+        "  - title: a concise name for the item.\n" +
+        "  - body_markdown: the useful information about the item, as Markdown (lists/emphasis as " +
+        "helpful). Merge details across sources when the item was duplicated. Do NOT repeat the " +
+        "title as a heading and do NOT include source links here — those are added by the wrapper.\n" +
+        "  - source_slugs: the concept slug of EVERY video this item came from (one or more), each " +
+        "exactly as given for that video (no \".html\", no path, no http link).";
 
     private static readonly JsonNode FormatSchema = JsonNode.Parse("""
         {
@@ -40,9 +52,21 @@ public sealed class OpenAiReportSynthesizer(
           "additionalProperties": false,
           "properties": {
             "library_description": { "type": "string" },
-            "report_html":         { "type": "string" }
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "title":         { "type": "string" },
+                  "body_markdown": { "type": "string" },
+                  "source_slugs":  { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["title", "body_markdown", "source_slugs"]
+              }
+            }
           },
-          "required": ["library_description", "report_html"]
+          "required": ["library_description", "items"]
         }
         """)!;
 
@@ -91,9 +115,16 @@ public sealed class OpenAiReportSynthesizer(
         try
         {
             var parsed = JsonSerializer.Deserialize<ReportPayload>(raw);
-            if (parsed is null || string.IsNullOrWhiteSpace(parsed.ReportHtml))
-                throw new ReportSynthesisException("Synthesizer returned empty report_html.");
-            return new ReportSynthesisResult(parsed.LibraryDescription ?? string.Empty, parsed.ReportHtml);
+            var items = (parsed?.Items ?? new List<ReportItemPayload>())
+                .Where(i => !string.IsNullOrWhiteSpace(i.Title) && !string.IsNullOrWhiteSpace(i.BodyMarkdown))
+                .Select(i => new ReportItem(
+                    i.Title!.Trim(),
+                    i.BodyMarkdown!,
+                    (IReadOnlyList<string>)(i.SourceSlugs ?? new List<string>())))
+                .ToList();
+            if (items.Count == 0)
+                throw new ReportSynthesisException("Synthesizer returned no usable items.");
+            return new ReportSynthesisResult(parsed!.LibraryDescription ?? string.Empty, items);
         }
         catch (JsonException ex)
         {
@@ -104,5 +135,10 @@ public sealed class OpenAiReportSynthesizer(
 
     private sealed record ReportPayload(
         [property: JsonPropertyName("library_description")] string? LibraryDescription,
-        [property: JsonPropertyName("report_html")] string? ReportHtml);
+        [property: JsonPropertyName("items")] List<ReportItemPayload>? Items);
+
+    private sealed record ReportItemPayload(
+        [property: JsonPropertyName("title")] string? Title,
+        [property: JsonPropertyName("body_markdown")] string? BodyMarkdown,
+        [property: JsonPropertyName("source_slugs")] List<string>? SourceSlugs);
 }

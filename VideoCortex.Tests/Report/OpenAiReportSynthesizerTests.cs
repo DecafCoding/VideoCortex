@@ -28,22 +28,48 @@ public class OpenAiReportSynthesizerTests
         });
 
     [Fact]
-    public async Task Parses_Result_And_Sends_Strict_Json_Schema()
+    public async Task Parses_Items_And_Sends_Strict_Json_Schema()
     {
         var payload = JsonSerializer.Serialize(new
         {
             library_description = "A project about AI.",
-            report_html = "<h2>Theme</h2><p><a href=\"vid-a.html\">A</a></p><section><h2>Sources</h2><ul><li><a href=\"vid-a.html\">Vid A</a></li></ul></section>",
+            items = new[]
+            {
+                new { title = "Topic One", body_markdown = "Detail about one.", source_slugs = new[] { "vid-a" } },
+                new { title = "Topic Two", body_markdown = "Detail about two.", source_slugs = new[] { "vid-a", "vid-b" } },
+            },
         });
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, Completion(payload));
 
         var result = await Synthesizer(handler).SynthesizeAsync(Ctx());
 
         result.LibraryDescription.Should().Be("A project about AI.");
-        result.ReportHtml.Should().Contain("<h2>Theme</h2>").And.Contain("<h2>Sources</h2>");
+        result.Items.Should().HaveCount(2);
+        result.Items[0].Title.Should().Be("Topic One");
+        result.Items[1].SourceSlugs.Should().BeEquivalentTo(new[] { "vid-a", "vid-b" });
 
         // The request enforced strict structured output.
-        handler.LastRequestBody.Should().Contain("json_schema").And.Contain("\"strict\":true").And.Contain("report_html");
+        handler.LastRequestBody.Should().Contain("json_schema").And.Contain("\"strict\":true").And.Contain("source_slugs");
+    }
+
+    [Fact]
+    public async Task Drops_Items_Missing_Title_Or_Body()
+    {
+        var payload = JsonSerializer.Serialize(new
+        {
+            library_description = "d",
+            items = new[]
+            {
+                new { title = "Kept", body_markdown = "has body", source_slugs = new[] { "vid-a" } },
+                new { title = "", body_markdown = "no title", source_slugs = new string[0] },
+                new { title = "no body", body_markdown = "", source_slugs = new string[0] },
+            },
+        });
+        var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, Completion(payload));
+
+        var result = await Synthesizer(handler).SynthesizeAsync(Ctx());
+
+        result.Items.Should().ContainSingle().Which.Title.Should().Be("Kept");
     }
 
     [Fact]
@@ -63,9 +89,9 @@ public class OpenAiReportSynthesizerTests
     }
 
     [Fact]
-    public async Task Empty_ReportHtml_Throws_ReportSynthesisException()
+    public async Task Empty_Items_Throws_ReportSynthesisException()
     {
-        var payload = JsonSerializer.Serialize(new { library_description = "d", report_html = "" });
+        var payload = JsonSerializer.Serialize(new { library_description = "d", items = Array.Empty<object>() });
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, Completion(payload));
         var act = () => Synthesizer(handler).SynthesizeAsync(Ctx());
         await act.Should().ThrowAsync<ReportSynthesisException>();
