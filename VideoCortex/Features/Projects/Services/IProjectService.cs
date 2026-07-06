@@ -17,4 +17,10 @@ public interface IProjectService
     /// precious durable artifact. When opted-in, only the project's own folder is removed.
     /// </summary>
     Task<DeleteProjectResult> DeleteAsync(int projectId, bool deleteLibraryFolder, CancellationToken ct = default);
+
+    /// <summary>
+    /// Marks the project's report dirty (and clears any backoff/park) so the report worker
+    /// regenerates it on the next tick. Returns false if the project no longer exists.
+    /// </summary>
+    Task<bool> RequestReportRebuildAsync(int projectId, CancellationToken ct = default);
 }

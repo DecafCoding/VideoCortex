@@ -96,6 +96,45 @@ public sealed partial class OkfLibraryStore : IOkfLibraryStore
         return slug;
     }
 
+    public async Task WriteReportAsync(
+        Project project, string libraryDescription, string reportHtml, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+
+        var dir = Path.Combine(_rootPath, SanitizeFolderName(project.Name));
+        Directory.CreateDirectory(dir);
+
+        var name = project.Name.Trim();
+        var template = await File.ReadAllTextAsync(Path.Combine(_templatesDir, "index.html"), Utf8NoBom, ct);
+
+        // okf-meta title is JSON-encoded (quoted in the template); visible title/description are HTML.
+        var html = template.Replace("\"{{LIBRARY_TITLE}}\"", JsonSerializer.Serialize(name));
+        html = html.Replace("{{LIBRARY_TITLE}}", WebUtility.HtmlEncode(name));
+        html = html.Replace("{{THEME_HREF}}", "theme.css");
+        html = html.Replace("{{LIBRARY_DESCRIPTION}}", WebUtility.HtmlEncode(libraryDescription ?? string.Empty));
+
+        // Replace the sample index-group region with the LLM-authored report body (injected raw —
+        // it is meant to be HTML). MatchEvaluator avoids Regex '$' substitution in the body.
+        html = IndexGroupBlock().Replace(html, _ => "\n    " + reportHtml);
+
+        await AtomicWriteTextAsync(Path.Combine(dir, "index.html"), html, ct);
+    }
+
+    public Task DeleteConceptPageAsync(Project project, Video video, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(video);
+
+        var slug = video.ConceptSlug;
+        if (string.IsNullOrWhiteSpace(slug)) return Task.CompletedTask;
+        if (!SafeFileNameRegex().IsMatch(slug))
+            throw new ArgumentException($"Unsafe concept slug '{slug}'.", nameof(video));
+
+        var path = Path.Combine(_rootPath, SanitizeFolderName(project.Name), slug + ".html");
+        if (File.Exists(path)) File.Delete(path);
+        return Task.CompletedTask;
+    }
+
     private static string ResolveConceptSlug(string dir, string title, string fallbackId)
     {
         var baseSlug = SlugHelper.ToSlug(title, SlugHelper.ToSlug(fallbackId, "video"));
@@ -177,4 +216,7 @@ public sealed partial class OkfLibraryStore : IOkfLibraryStore
 
     [GeneratedRegex("""\s*<section class="okf-index-group">.*?</section>""", RegexOptions.Singleline)]
     private static partial Regex IndexGroupBlock();
+
+    [GeneratedRegex("^[A-Za-z0-9._-]+$")]
+    private static partial Regex SafeFileNameRegex();
 }

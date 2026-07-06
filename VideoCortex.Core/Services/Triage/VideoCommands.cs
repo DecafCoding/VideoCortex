@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using VideoCortex.Core.Db;
 using VideoCortex.Core.Entities;
+using VideoCortex.Core.Services.Library;
 
 namespace VideoCortex.Core.Services.Triage;
 
@@ -10,7 +11,8 @@ namespace VideoCortex.Core.Services.Triage;
 /// check is a courtesy; the unique <c>(ProjectId, YoutubeVideoId)</c> index is the real guard,
 /// and the <see cref="DbUpdateException"/> catch closes the check-then-insert race.
 /// </summary>
-public sealed class VideoCommands(VideoCortexDbContext db, ILogger<VideoCommands> logger) : IVideoCommands
+public sealed class VideoCommands(
+    VideoCortexDbContext db, IOkfLibraryStore library, ILogger<VideoCommands> logger) : IVideoCommands
 {
     public async Task<AddVideoResult> AddVideoByUrlAsync(int projectId, string input, CancellationToken ct = default)
     {
@@ -48,5 +50,29 @@ public sealed class VideoCommands(VideoCortexDbContext db, ILogger<VideoCommands
         }
 
         return AddVideoResult.Added(video.Id, video.YoutubeVideoId);
+    }
+
+    public async Task<bool> RemoveVideoAsync(int videoId, CancellationToken ct = default)
+    {
+        var video = await db.Videos.Include(v => v.Project).FirstOrDefaultAsync(v => v.Id == videoId, ct);
+        if (video is null) return false;
+
+        // Delete the concept page first (best-effort), then the row, then mark the report dirty.
+        if (video.Project is not null)
+        {
+            try
+            {
+                await library.DeleteConceptPageAsync(video.Project, video, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to delete concept page for video {VideoId}", videoId);
+            }
+            video.Project.ReportDirtySince ??= DateTime.UtcNow;
+        }
+
+        db.Videos.Remove(video);
+        await db.SaveChangesAsync(ct);
+        return true;
     }
 }

@@ -24,6 +24,18 @@ public class Project
     /// <summary>UTC time the project's report (index.html) was last (re)generated.</summary>
     public DateTime? ReportUpdatedAt { get; set; }
 
+    /// <summary>
+    /// Set (via <c>??=</c>) when a video reaches Summarized, on "Rebuild report", or on
+    /// "remove video"; cleared only after a successful regeneration. Non-null = needs a report pass.
+    /// </summary>
+    public DateTime? ReportDirtySince { get; set; }
+
+    /// <summary>Consecutive failed report regenerations; parks the project past the retry cap.</summary>
+    public int ReportRetryCount { get; set; }
+
+    /// <summary>Earliest UTC time the report worker may retry after a failure (exponential backoff).</summary>
+    public DateTime? ReportNextAttemptAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public ICollection<Video> Videos { get; set; } = new List<Video>();

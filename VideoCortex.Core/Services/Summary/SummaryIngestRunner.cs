@@ -58,6 +58,10 @@ public sealed class SummaryIngestRunner(
             video.LastError = null;
             video.NextAttemptAt = null;
 
+            // Mark the project for report regeneration. ??= preserves the earliest dirty time
+            // across a burst so the report worker debounces from it (one pass, not one-per-video).
+            project.ReportDirtySince ??= DateTime.UtcNow;
+
             await db.SaveChangesAsync(ct);
             sw.Stop();
             logger.LogInformation("Summary ingest video {VideoId} ({Yt}): summarized in {Elapsed}ms",

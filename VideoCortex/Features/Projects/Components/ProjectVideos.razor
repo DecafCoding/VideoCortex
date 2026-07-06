@@ -1,4 +1,6 @@
+@using System.IO
 @inject IVideoQueries VideoQueries
+@inject IVideoCommands VideoCommands
 
 <div class="videos-header">
     <h3>Videos @(_videos is not null ? $"({_videos.Count})" : "")</h3>
@@ -17,7 +19,7 @@ else
 {
     <table class="videos">
         <thead>
-            <tr><th>Video</th><th>Status</th><th>Added</th></tr>
+            <tr><th>Video</th><th>Status</th><th>Added</th><th></th></tr>
         </thead>
         <tbody>
             @foreach (var v in _videos)
@@ -32,9 +34,24 @@ else
                         {
                             <code>@v.YoutubeVideoId</code>
                         }
+                        @if (ConceptHref(v) is { } href)
+                        {
+                            <a class="small" href="@href" target="_blank" rel="noopener"> open ↗</a>
+                        }
                     </td>
                     <td><span class="badge @BadgeClass(v.Status)">@Label(v.Status)</span></td>
                     <td class="meta">@v.AddedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>
+                        @if (_confirmingId == v.Id)
+                        {
+                            <button class="btn-danger small" @onclick="() => RemoveAsync(v.Id)" disabled="@_busy">Confirm</button>
+                            <button class="small" @onclick="() => _confirmingId = null" disabled="@_busy">Cancel</button>
+                        }
+                        else
+                        {
+                            <button class="small" @onclick="() => _confirmingId = v.Id">Remove</button>
+                        }
+                    </td>
                 </tr>
             }
         </tbody>
@@ -44,13 +61,20 @@ else
 @code {
     [Parameter] public int ProjectId { get; set; }
 
+    /// <summary>Absolute path to the project's on-disk library folder, for building open-page links.</summary>
+    [Parameter] public string? LibraryDir { get; set; }
+
+    /// <summary>Invoked after a video is removed, so the parent can refresh related state.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
     private IReadOnlyList<VideoRowDto>? _videos;
     private bool _loading;
+    private bool _busy;
+    private int? _confirmingId;
     private int _loadedProjectId;
 
     protected override async Task OnParametersSetAsync()
     {
-        // Reload when first shown or when the target project changes.
         if (_videos is null || _loadedProjectId != ProjectId)
         {
             _loadedProjectId = ProjectId;
@@ -69,6 +93,28 @@ else
         {
             _loading = false;
         }
+    }
+
+    private async Task RemoveAsync(int videoId)
+    {
+        _busy = true;
+        try
+        {
+            await VideoCommands.RemoveVideoAsync(videoId);
+            _confirmingId = null;
+            await RefreshAsync();
+            await OnChanged.InvokeAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private string? ConceptHref(VideoRowDto v)
+    {
+        if (string.IsNullOrWhiteSpace(v.ConceptSlug) || string.IsNullOrWhiteSpace(LibraryDir)) return null;
+        return new Uri(Path.Combine(LibraryDir, v.ConceptSlug + ".html")).AbsoluteUri;
     }
 
     private static string Label(VideoStatus status) => status switch

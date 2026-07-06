@@ -9,4 +9,11 @@ public interface IVideoCommands
     /// (title, channel, duration) is left null for Phase 4 to backfill. No fetch happens here.
     /// </summary>
     Task<AddVideoResult> AddVideoByUrlAsync(int projectId, string input, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes a video: deletes its concept page from disk, deletes the row, and marks the
+    /// owning project's report dirty so it regenerates without the removed video. Returns false
+    /// if the video no longer exists.
+    /// </summary>
+    Task<bool> RemoveVideoAsync(int videoId, CancellationToken ct = default);
 }
