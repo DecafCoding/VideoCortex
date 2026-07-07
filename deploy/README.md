@@ -58,22 +58,37 @@ sudo systemctl daemon-reload && sudo systemctl enable --now videocortex
 
 (That's just `git pull` + `dotnet publish` + `sudo systemctl restart videocortex`.)
 
-## 4. API keys
+⚠️ `update.sh` does **not** reinstall the configs. If a pull changed
+`deploy/videocortex.service` or `deploy/nginx/videocortex.conf`, re-copy them as in §2
+(then `sudo systemctl daemon-reload && sudo systemctl restart videocortex` for the unit,
+`sudo nginx -t && sudo systemctl reload nginx` for nginx). A stale unit fails silently —
+new `Environment`/`EnvironmentFile` lines simply never load. Verify what systemd is
+actually running with `systemctl cat videocortex`.
+
+## 4. Environment file (API keys + library root)
 
 Secrets are supplied server-side via the systemd `EnvironmentFile` — the Settings page
-shows whether they are set but cannot edit them:
+shows whether they are set but cannot edit them. Set the library root here too:
 
 ```bash
 sudo mkdir -p /etc/videocortex
 sudo tee /etc/videocortex/env >/dev/null <<'EOF'
 Apify__Token=apify_api_...
 Llm__ApiKey=sk-...
+Library__RootPath=/home/videocortex/SecondBrain
 EOF
 sudo chmod 600 /etc/videocortex/env
 sudo systemctl restart videocortex
 ```
 
-(On the dev machine, `dotnet user-secrets` still supplies these in Development.)
+`Library__RootPath` is not optional in practice: the app's default derives from the
+.NET "My Documents" folder, and on a fresh service account (no `~/Documents`) that
+resolves to an **empty string** — the root then lands relative to the working directory
+(`/opt/videocortex/SecondBrain`), which the service user can't create, and the app
+crash-loops at startup. Setting it explicitly also keeps it aligned with the nginx
+`/library/` alias.
+
+(On the dev machine, `dotnet user-secrets` still supplies the secrets in Development.)
 
 ## 5. Migrate existing data (from the Windows install)
 
@@ -100,7 +115,8 @@ sudo systemctl restart videocortex
 
 The app has **no authentication**, so restrict who can reach it. With no router port
 forwarding it is already unreachable from the internet; make that explicit with ufw so a
-misconfigured router can't change it (adjust the subnet to your LAN):
+misconfigured router can't change it. Adjust `192.168.1.0/24` to your LAN — it's the
+server's IP with the last octet as `0` (server at `192.168.50.102` → `192.168.50.0/24`):
 
 ```bash
 sudo ufw allow OpenSSH
@@ -108,6 +124,12 @@ sudo ufw allow from 192.168.1.0/24 to any port 80 proto tcp
 sudo ufw enable
 sudo ufw status verbose
 ```
+
+⚠️ Enabling ufw blocks **every other service on this box** (an Ollama/llama.cpp endpoint,
+Samba, etc.). Add an equivalent `allow from <subnet> to any port <port>` rule for each
+one you use. Loopback traffic is unaffected, so the app reaching a local LLM on
+`localhost` keeps working regardless. Always add the OpenSSH rule **before**
+`ufw enable` or you'll drop your own SSH session.
 
 Everything on your LAN (guests, IoT devices) can then open the app; the API keys are no
 longer exposed in the UI, so the blast radius is queuing videos that spend API credits.
@@ -123,3 +145,40 @@ port-forward the app to the open internet without auth + TLS.
 - `http://<server>/` — the app loads and stays connected (no reconnect banner).
 - `http://<server>/library/<Project>/` — the report renders with styling (nginx serves
   this even when the app is stopped).
+
+## Troubleshooting
+
+**502 Bad Gateway** — nginx is fine; the app isn't listening on `127.0.0.1:5000`. Check
+`systemctl status videocortex`.
+
+**Crash loop masquerading as "running"** — a startup crash takes ~6 seconds, and systemd
+restarts 5 s later, so `status` often catches a freshly restarted process. The tells:
+`Active: active (running) since … <a few seconds> ago` and a climbing
+`restart counter is at N`. It's only healthy once the uptime passes ~15 s. Get the actual
+error with:
+
+```bash
+journalctl -u videocortex -n 60 --no-pager | grep -A 8 "Unhandled exception"
+```
+
+Common causes:
+
+- `Access to the path '/opt/videocortex/SecondBrain' is denied` → `Library__RootPath`
+  missing from `/etc/videocortex/env` (see §4), or the installed unit predates the
+  `EnvironmentFile` line (see §3 — `systemctl cat videocortex | grep EnvironmentFile`
+  must show it uncommented).
+- Permission errors under `/home/videocortex` → rerun the `chown -R` from §5.
+- Config parse error at startup → malformed hand-edited
+  `/home/videocortex/.videocortex/appsettings.Local.json`.
+
+**Settings page shows keys "not set"** — same stale-unit cause as above, or a typo in
+the env file (the separator is a **double underscore**: `Apify__Token`, not
+`Apify:Token`; `user-secrets` does not work in production).
+
+**Run it in the foreground** to see errors directly, bypassing the restart loop:
+
+```bash
+sudo systemctl stop videocortex
+sudo -u videocortex ASPNETCORE_ENVIRONMENT=Production ASPNETCORE_URLS=http://127.0.0.1:5000 \
+  Library__RootPath=/home/videocortex/SecondBrain /opt/videocortex/VideoCortex
+```
