@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
@@ -89,13 +90,19 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+// Kestrel sits behind a reverse proxy in production (see deploy/); honor the proxy's
+// X-Forwarded-For/Proto from loopback (the default trust list) so antiforgery, cookies,
+// and generated URLs see the original https scheme. TLS termination, the http→https
+// redirect, and HSTS are the proxy's job — the app itself serves plain HTTP.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+});
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();
 }
-
-app.UseHttpsRedirection();
 
 // Serve the on-disk OKF libraries at /library so "Open Library" / "open ↗" work from any
 // browser, not just one on this machine. Generated pages use only relative links, so they

@@ -1,0 +1,26 @@
+# systemd unit for Video Cortex. Install to /etc/systemd/system/videocortex.service,
+# then: sudo systemctl daemon-reload && sudo systemctl enable --now videocortex
+#
+# The service user must have a real home directory: the app derives its state paths
+# from $HOME (~/.videocortex for the SQLite DB + config overlay, ~/SecondBrain as the
+# default library root).
+[Unit]
+Description=Video Cortex — YouTube knowledge library
+After=network.target
+
+[Service]
+User=videocortex
+WorkingDirectory=/opt/videocortex
+ExecStart=/opt/videocortex/VideoCortex
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
+# Secrets can be supplied here instead of via the Settings page (double underscore = ":"):
+#   Apify__Token=... and Llm__ApiKey=... in a root-owned, chmod 600 file.
+# EnvironmentFile=/etc/videocortex/env
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+SyslogIdentifier=videocortex
+
+[Install]
+WantedBy=multi-user.target
