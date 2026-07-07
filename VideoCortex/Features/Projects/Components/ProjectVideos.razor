@@ -1,9 +1,7 @@
-@using System.IO
 @implements IDisposable
 @inject IVideoQueries VideoQueries
 @inject IVideoCommands VideoCommands
 @inject IVideoRetryCommand VideoRetry
-@inject IDesktopFileOpener FileOpener
 
 <div class="d-flex justify-content-between align-items-center mb-2">
     <h3 class="h5 mb-0">
@@ -49,9 +47,9 @@ else
                             {
                                 <code>@v.YoutubeVideoId</code>
                             }
-                            @if (ConceptPath(v) is { } path)
+                            @if (ConceptUrl(v) is { } url)
                             {
-                                <button type="button" class="linklike small ms-1" @onclick="() => OpenConcept(path)">open ↗</button>
+                                <a class="small ms-1" href="@url" target="_blank">open ↗</a>
                             }
                             @if (NeedsRetry(v) && !string.IsNullOrWhiteSpace(v.LastError))
                             {
@@ -91,8 +89,8 @@ else
 @code {
     [Parameter] public int ProjectId { get; set; }
 
-    /// <summary>Absolute path to the project's on-disk library folder, for building open-page links.</summary>
-    [Parameter] public string? LibraryDir { get; set; }
+    /// <summary>The project's library folder name, for building hosted open-page links.</summary>
+    [Parameter] public string? LibraryFolderName { get; set; }
 
     /// <summary>Invoked after a video is removed, so the parent can refresh related state.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
@@ -208,13 +206,11 @@ else
         }
     }
 
-    private string? ConceptPath(VideoRowDto v)
+    private string? ConceptUrl(VideoRowDto v)
     {
-        if (string.IsNullOrWhiteSpace(v.ConceptSlug) || string.IsNullOrWhiteSpace(LibraryDir)) return null;
-        return Path.Combine(LibraryDir, v.ConceptSlug + ".html");
+        if (string.IsNullOrWhiteSpace(v.ConceptSlug) || string.IsNullOrWhiteSpace(LibraryFolderName)) return null;
+        return LibraryUrls.ForConcept(LibraryFolderName, v.ConceptSlug);
     }
-
-    private void OpenConcept(string path) => FileOpener.TryOpen(path, out _);
 
     private static bool NeedsRetry(VideoRowDto v)
         => v.Parked || v.Status is VideoStatus.Error or VideoStatus.NoTranscript;

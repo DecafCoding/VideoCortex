@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using VideoCortex.Components;
 using VideoCortex.Core.Db;
@@ -59,7 +60,6 @@ builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IVideoCommands, VideoCommands>();
 builder.Services.AddScoped<IVideoQueries, VideoQueries>();
 builder.Services.AddScoped<IVideoRetryCommand, VideoRetryCommand>();
-builder.Services.AddSingleton<IDesktopFileOpener, DesktopFileOpener>();
 
 // Transcript pipeline stage: typed HttpClient source (Apify) + scoped per-video runner +
 // the polling background worker. The typed-client registration also registers ITranscriptSource.
@@ -96,6 +96,17 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Serve the on-disk OKF libraries at /library so "Open Library" / "open ↗" work from any
+// browser, not just one on this machine. Generated pages use only relative links, so they
+// need no rewriting. RootPath is captured at startup (same as OkfLibraryStore); changing
+// the library root from Settings requires a restart.
+var libraryRoot = app.Services.GetRequiredService<IOptions<LibrarySettings>>().Value.RootPath;
+Directory.CreateDirectory(libraryRoot);
+var libraryFiles = new PhysicalFileProvider(libraryRoot);
+app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = libraryFiles, RequestPath = LibraryUrls.RequestPath });
+app.UseStaticFiles(new StaticFileOptions { FileProvider = libraryFiles, RequestPath = LibraryUrls.RequestPath });
+
 app.UseAntiforgery();
 
 app.MapStaticAssets();

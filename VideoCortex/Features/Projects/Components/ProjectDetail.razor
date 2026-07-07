@@ -5,7 +5,6 @@
 @inject IProjectService ProjectService
 @inject NavigationManager Nav
 @inject IOptions<LibrarySettings> LibraryOptions
-@inject IDesktopFileOpener FileOpener
 
 <PageTitle>@(_project?.Name ?? "Project") — Video Cortex</PageTitle>
 
@@ -26,9 +25,9 @@ else
                 <div class="card-header"><h2 class="h6 mb-0">Library</h2></div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-outline-primary" @onclick="OpenLibrary">
+                        <a class="btn btn-outline-primary" href="@_libraryUrl" target="_blank">
                             <i class="bi bi-box-arrow-up-right me-1"></i>Open Library
-                        </button>
+                        </a>
                         <button type="button" class="btn btn-outline-secondary" @onclick="RebuildReport" disabled="@_rebuilding">
                             <i class="bi bi-arrow-repeat me-1"></i>@(_rebuilding ? "Requesting…" : "Rebuild Report")
                         </button>
@@ -36,10 +35,6 @@ else
                     @if (_rebuildMessage is not null)
                     {
                         <div class="alert alert-success py-2 mt-2 mb-0">@_rebuildMessage</div>
-                    }
-                    @if (_openError is not null)
-                    {
-                        <div class="alert alert-warning py-2 mt-2 mb-0">@_openError</div>
                     }
                 </div>
             </div>
@@ -99,7 +94,7 @@ else
 
             <div class="card">
                 <div class="card-body">
-                    <ProjectVideos @ref="_videos" ProjectId="_project.Id" LibraryDir="_libraryDir" OnChanged="RefreshVideos" />
+                    <ProjectVideos @ref="_videos" ProjectId="_project.Id" LibraryFolderName="@_project.LibraryFolderName" OnChanged="RefreshVideos" />
                 </div>
             </div>
         </section>
@@ -117,10 +112,9 @@ else
     private bool _deleting;
     private string? _error;
     private string _libraryPath = string.Empty;
-    private string _libraryDir = string.Empty;
+    private string _libraryUrl = string.Empty;
     private bool _rebuilding;
     private string? _rebuildMessage;
-    private string? _openError;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -128,17 +122,10 @@ else
         _project = await ProjectService.GetBySlugAsync(Slug);
         if (_project is not null)
         {
-            _libraryDir = Path.Combine(LibraryOptions.Value.RootPath, _project.LibraryFolderName);
-            _libraryPath = Path.Combine(_libraryDir, "index.html");
+            _libraryPath = Path.Combine(LibraryOptions.Value.RootPath, _project.LibraryFolderName, "index.html");
+            _libraryUrl = LibraryUrls.ForProject(_project.LibraryFolderName);
         }
         _loading = false;
-    }
-
-    private void OpenLibrary()
-    {
-        _openError = null;
-        if (!FileOpener.TryOpen(_libraryPath, out var error))
-            _openError = $"Couldn't open the library: {error}";
     }
 
     private async Task RebuildReport()
