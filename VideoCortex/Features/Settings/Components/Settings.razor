@@ -40,11 +40,10 @@ else
                     <InputText class="form-control" @bind-Value="_form.BaseUrl" placeholder="(blank = https://api.openai.com)" />
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">API Key
+                    <label class="form-label mb-0">API Key
                         <span class="badge @(_form.ApiKeyIsSet ? "text-bg-success" : "text-bg-secondary")">@(_form.ApiKeyIsSet ? "set" : "not set")</span>
                     </label>
-                    <input type="password" class="form-control" placeholder="@(_form.ApiKeyIsSet ? "•••••• (leave blank to keep)" : "enter API key")"
-                           @oninput="e => OnSecretInput(e, isApify: false)" />
+                    <div class="form-text">Configured on the server (<code>Llm__ApiKey</code>) — see <code>deploy/README.md</code>. In development, use <code>dotnet user-secrets</code>.</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Request Timeout (seconds)</label>
@@ -57,11 +56,10 @@ else
             <div class="card-header"><h2 class="h5 mb-0">Apify</h2></div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label class="form-label">Token
+                    <label class="form-label mb-0">Token
                         <span class="badge @(_form.ApifyTokenIsSet ? "text-bg-success" : "text-bg-secondary")">@(_form.ApifyTokenIsSet ? "set" : "not set")</span>
                     </label>
-                    <input type="password" class="form-control" placeholder="@(_form.ApifyTokenIsSet ? "•••••• (leave blank to keep)" : "enter Apify token")"
-                           @oninput="e => OnSecretInput(e, isApify: true)" />
+                    <div class="form-text">Configured on the server (<code>Apify__Token</code>) — see <code>deploy/README.md</code>. In development, use <code>dotnet user-secrets</code>.</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Run Timeout (seconds)</label>
@@ -99,13 +97,6 @@ else
     private string _alertClass = "alert-secondary";
 
     protected override async Task OnInitializedAsync() => _form = await SettingsService.LoadAsync();
-
-    private void OnSecretInput(ChangeEventArgs e, bool isApify)
-    {
-        var value = e.Value?.ToString() ?? string.Empty;
-        if (isApify) { _form!.ApifyToken = value; _form.ApifyTokenDirty = true; }
-        else { _form!.ApiKey = value; _form.ApiKeyDirty = true; }
-    }
 
     private async Task SaveAsync()
     {

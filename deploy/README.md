@@ -58,41 +58,66 @@ sudo systemctl daemon-reload && sudo systemctl enable --now videocortex
 
 (That's just `git pull` + `dotnet publish` + `sudo systemctl restart videocortex`.)
 
-## 4. Migrate existing data (from the Windows install)
+## 4. API keys
+
+Secrets are supplied server-side via the systemd `EnvironmentFile` — the Settings page
+shows whether they are set but cannot edit them:
+
+```bash
+sudo mkdir -p /etc/videocortex
+sudo tee /etc/videocortex/env >/dev/null <<'EOF'
+Apify__Token=apify_api_...
+Llm__ApiKey=sk-...
+EOF
+sudo chmod 600 /etc/videocortex/env
+sudo systemctl restart videocortex
+```
+
+(On the dev machine, `dotnet user-secrets` still supplies these in Development.)
+
+## 5. Migrate existing data (from the Windows install)
 
 Copy to the **service user's** home on the server:
 
 - `%USERPROFILE%\.videocortex\app.db`            → `/home/videocortex/.videocortex/app.db`
-- `%USERPROFILE%\.videocortex\appsettings.Local.json` → same folder — **edit it first**: if it
-  contains a `Library:RootPath` like `C:\Users\...`, change it to
-  `/home/videocortex/SecondBrain` (a Windows path won't fail on Linux — it silently creates
-  a literal `C:\Users\...` directory).
+- `%USERPROFILE%\.videocortex\appsettings.Local.json` → same folder — **edit it first**:
+  - If it contains a `Library:RootPath` like `C:\Users\...`, change it to
+    `/home/videocortex/SecondBrain` (a Windows path won't fail on Linux — it silently
+    creates a literal `C:\Users\...` directory).
+  - **Delete any `ApiKey` / `Token` entries** left over from when the Settings page wrote
+    secrets. The overlay is layered *after* environment variables, so a stale secret here
+    would silently override `/etc/videocortex/env`.
 - `Documents\SecondBrain\<each project folder>`  → `/home/videocortex/SecondBrain/`
 
 Then:
 
 ```bash
 sudo chown -R videocortex:videocortex /home/videocortex/.videocortex /home/videocortex/SecondBrain
-sudo chmod 600 /home/videocortex/.videocortex/appsettings.Local.json   # holds API keys
 sudo systemctl restart videocortex
 ```
 
-Secrets (Apify token, LLM key) can be entered on the Settings page (persisted to the
-overlay) or supplied via `EnvironmentFile=` in the unit — see comments in
-`videocortex.service`. `dotnet user-secrets` is Development-only and does not apply here.
+## 6. Lock it down (LAN-only)
 
-## 5. Lock it down
+The app has **no authentication**, so restrict who can reach it. With no router port
+forwarding it is already unreachable from the internet; make that explicit with ufw so a
+misconfigured router can't change it (adjust the subnet to your LAN):
 
-The app has **no authentication** and its Settings page exposes your API keys. Pick one:
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow from 192.168.1.0/24 to any port 80 proto tcp
+sudo ufw enable
+sudo ufw status verbose
+```
 
-- **Tailscale (recommended):** install on the server, keep nginx on port 80, and only the
-  tailnet can reach it. `tailscale serve --bg 80` adds HTTPS with a MagicDNS name for free.
-- **Basic auth:** uncomment the `auth_basic` lines in the nginx config and create the
-  htpasswd file. Pair with certbot TLS if exposed beyond the LAN.
+Everything on your LAN (guests, IoT devices) can then open the app; the API keys are no
+longer exposed in the UI, so the blast radius is queuing videos that spend API credits.
+Uncomment the `auth_basic` lines in the nginx config for a cheap extra layer if wanted.
 
-Never port-forward it to the open internet without auth + TLS.
+Want access from outside the house later? Add Tailscale — the server stays LAN-reachable
+and also gets a tailnet name (`tailscale serve --bg 80` adds HTTPS for free). Never
+port-forward the app to the open internet without auth + TLS.
 
-## 6. Verify
+## 7. Verify
 
 - `systemctl status videocortex` — running; `journalctl -u videocortex -f` for logs.
 - `http://<server>/` — the app loads and stays connected (no reconnect banner).
