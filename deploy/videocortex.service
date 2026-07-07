@@ -14,9 +14,12 @@ WorkingDirectory=/opt/videocortex
 ExecStart=/opt/videocortex/VideoCortex
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
-# Secrets can be supplied here instead of via the Settings page (double underscore = ":"):
-#   Apify__Token=... and Llm__ApiKey=... in a root-owned, chmod 600 file.
-# EnvironmentFile=/etc/videocortex/env
+# API keys live here (root-owned, chmod 600) — the Settings page shows whether they are
+# set but cannot edit them. Double underscore maps to ":" in config keys:
+#   Apify__Token=apify_api_...
+#   Llm__ApiKey=sk-...
+# The leading "-" makes the file optional so the service still starts before it exists.
+EnvironmentFile=-/etc/videocortex/env
 Restart=always
 RestartSec=5
 KillSignal=SIGINT

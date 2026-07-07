@@ -8,7 +8,8 @@ namespace VideoCortex.Features.Settings.Services;
 /// Loads current effective settings from <see cref="IConfiguration"/> (appsettings + overlay) and
 /// persists edits to the writable overlay via <see cref="IOverlayWriter"/>. Persisted keys use the
 /// same colon paths the Phase-1 config records bind, so <c>IOptionsMonitor</c> picks changes up on
-/// the next reload — no restart. Secrets are persisted only when the user changed them.
+/// the next reload — no restart. Secrets are read-only here (surfaced as <c>*IsSet</c> flags) and
+/// are never written to the overlay — they come from user-secrets (dev) or the environment (prod).
 /// </summary>
 public sealed class SettingsService(IConfiguration config, IOverlayWriter overlay) : ISettingsService
 {
@@ -85,12 +86,6 @@ public sealed class SettingsService(IConfiguration config, IOverlayWriter overla
         await overlay.SetAsync($"{ReportSettings.Section}:IdlePollSeconds", form.ReportIdlePollSeconds.ToString(), ct);
         await overlay.SetAsync($"{ReportSettings.Section}:CoalesceDebounceSeconds", form.ReportCoalesceDebounceSeconds.ToString(), ct);
         await overlay.SetAsync($"{ReportSettings.Section}:MaxRetryAttempts", form.ReportMaxRetryAttempts.ToString(), ct);
-
-        // Secrets: only touch when the user actually typed a new value (empty + dirty removes it).
-        if (form.ApiKeyDirty)
-            await overlay.SetAsync($"{LlmSettings.Section}:ApiKey", form.ApiKey, ct);
-        if (form.ApifyTokenDirty)
-            await overlay.SetAsync($"{ApifySettings.Section}:Token", form.ApifyToken, ct);
 
         return SettingsResult.Success();
     }

@@ -43,7 +43,6 @@ public class SettingsServiceTests : IDisposable
     {
         var form = await Service(("Llm:ApiKey", "sk-secret"), ("Apify:Token", "")).LoadAsync();
         form.ApiKeyIsSet.Should().BeTrue();
-        form.ApiKey.Should().BeEmpty(); // never echoed
         form.ApifyTokenIsSet.Should().BeFalse();
     }
 
@@ -87,24 +86,14 @@ public class SettingsServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Save_Persists_Secret_Only_When_Dirty()
+    public async Task Save_Never_Persists_Secrets_To_Overlay()
     {
-        var form = Valid();
+        // Secrets come from user-secrets (dev) or the environment (prod); saving the
+        // Settings form must not write them to the overlay even when they exist in config.
+        var result = await Service(("Llm:ApiKey", "sk-secret"), ("Apify:Token", "apify_tok")).SaveAsync(Valid());
 
-        // Not dirty → no key written.
-        await Service().SaveAsync(form);
+        result.Ok.Should().BeTrue();
         (await _overlay.GetAsync("Llm:ApiKey")).Should().BeNull();
-
-        // Dirty with a value → written.
-        form.ApiKey = "sk-new";
-        form.ApiKeyDirty = true;
-        await Service().SaveAsync(form);
-        (await _overlay.GetAsync("Llm:ApiKey")).Should().Be("sk-new");
-
-        // Dirty + empty → removed.
-        form.ApiKey = "";
-        form.ApiKeyDirty = true;
-        await Service().SaveAsync(form);
-        (await _overlay.GetAsync("Llm:ApiKey")).Should().BeNull();
+        (await _overlay.GetAsync("Apify:Token")).Should().BeNull();
     }
 }

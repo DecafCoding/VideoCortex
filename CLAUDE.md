@@ -79,7 +79,7 @@ Key locations:
 
 ## Configuration
 
-All settings live in `VideoCortex/appsettings.json` under the `Apify`, `Llm`, `Library`, `TranscriptWorker`, `Summary`, and `Report` sections (bound to settings records). Non-secret defaults ship in source; **secrets are blank in source** and supplied via user-secrets in development:
+All settings live in `VideoCortex/appsettings.json` under the `Apify`, `Llm`, `Library`, `TranscriptWorker`, `Summary`, and `Report` sections (bound to settings records). Non-secret defaults ship in source; **secrets are blank in source** and supplied via user-secrets in development (production supplies them as environment variables — see `deploy/README.md`):
 
 ```bash
 cd VideoCortex
@@ -87,7 +87,7 @@ dotnet user-secrets set "Apify:Token" "apify_api_..."
 dotnet user-secrets set "Llm:ApiKey"  "sk-..."
 ```
 
-At runtime, non-secret and secret values are written to a hot-reloaded overlay at `%USERPROFILE%\.videocortex\appsettings.Local.json` (layered with `reloadOnChange:true`), editable from the Settings page. User-secrets is **not** hot-reloaded; the overlay is. Never place secrets in the committed `appsettings.json`.
+At runtime, **non-secret** values edited on the Settings page are written to a hot-reloaded overlay at `%USERPROFILE%\.videocortex\appsettings.Local.json` (layered with `reloadOnChange:true`). Secrets are read-only in the UI (shown only as set/not set) and are **never written to the overlay** — the overlay layers after environment variables, so a secret stored there would shadow the server-side value. User-secrets is **not** hot-reloaded; the overlay is. Never place secrets in the committed `appsettings.json`.
 
 Runtime paths:
 
