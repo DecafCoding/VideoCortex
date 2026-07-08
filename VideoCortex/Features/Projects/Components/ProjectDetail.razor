@@ -78,25 +78,25 @@ else
         </aside>
 
         <section class="col-lg-9 col-md-8">
-            <h1 class="mb-1">@_project.Name</h1>
-            @if (!string.IsNullOrWhiteSpace(_project.Description))
-            {
-                <p class="mb-1"><strong>Description:</strong> @_project.Description</p>
-            }
-            @if (!string.IsNullOrWhiteSpace(_project.AIInstructions))
-            {
-                <p class="mb-1"><strong>AI Instructions:</strong> @_project.AIInstructions</p>
-            }
-            <p class="text-body-secondary small mb-1">
-                Created @_project.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd") · Status: @_project.Status
-            </p>
-            <p class="text-body-secondary small text-break">Library: <code>@_libraryPath</code></p>
-
-            <div class="card">
+            <div class="card mb-3">
+                <div class="card-header"><h1 class="h5 mb-0">@_project.Name</h1></div>
                 <div class="card-body">
-                    <ProjectVideos @ref="_videos" ProjectId="_project.Id" LibraryFolderName="@_project.LibraryFolderName" OnChanged="RefreshVideos" />
+                    @if (!string.IsNullOrWhiteSpace(_project.Description))
+                    {
+                        <p class="mb-1"><strong>Description:</strong> @_project.Description</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_project.AIInstructions))
+                    {
+                        <p class="mb-1"><strong>AI Instructions:</strong> @_project.AIInstructions</p>
+                    }
+                    <p class="text-body-secondary small mb-1">
+                        Created @_project.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd") · Status: @_project.Status
+                    </p>
+                    <p class="text-body-secondary small text-break mb-0">Library: <code>@_libraryPath</code></p>
                 </div>
             </div>
+
+            <ProjectVideos @ref="_videos" ProjectId="_project.Id" LibraryFolderName="@_project.LibraryFolderName" OnChanged="RefreshVideos" />
         </section>
     </div>
 }
