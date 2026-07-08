@@ -85,6 +85,7 @@ public sealed class ReportRegenerationRunner(
             project.ReportUpdatedAt = now;
             ClearScheduling(project);
             project.ReportRetryCount = 0;
+            project.LastReportError = null;
             await db.SaveChangesAsync(ct);
 
             logger.LogInformation("Report regen project {ProjectId}: regenerated, folded {Folded} video(s)",
@@ -105,6 +106,7 @@ public sealed class ReportRegenerationRunner(
     {
         project.Status = ProjectStatus.Error;
         project.ReportRetryCount++;
+        project.LastReportError = ex.Message;
 
         if (project.ReportRetryCount >= _settings.MaxRetryAttempts)
         {

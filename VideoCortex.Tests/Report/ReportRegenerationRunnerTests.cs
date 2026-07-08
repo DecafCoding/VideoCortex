@@ -90,6 +90,8 @@ public class ReportRegenerationRunnerTests : IDisposable
         // Seed the library so WriteReportAsync overwrites a real folder.
         await new OkfLibraryStore(_root, TestPaths.OkfTemplatesDir())
             .CreateLibraryAsync(db.Projects.Single(p => p.Id == id));
+        db.Projects.Single(p => p.Id == id).LastReportError = "stale failure";
+        db.SaveChanges();
         var synth = OkSynth();
 
         var result = await NewRunner(db, synth).RunForProjectAsync(id);
@@ -102,6 +104,7 @@ public class ReportRegenerationRunnerTests : IDisposable
         project.Status.Should().Be(ProjectStatus.Idle);
         project.ReportUpdatedAt.Should().NotBeNull();
         project.ReportDirtySince.Should().BeNull();
+        project.LastReportError.Should().BeNull("a successful regeneration clears the recorded failure");
         verify.Videos.Where(v => v.ProjectId == id).Should().OnlyContain(v => v.Status == VideoStatus.Published);
 
         var html = File.ReadAllText(Path.Combine(_root, "Proj", "index.html"));
@@ -133,6 +136,7 @@ public class ReportRegenerationRunnerTests : IDisposable
         var project = verify.Projects.Single(p => p.Id == id);
         project.Status.Should().Be(ProjectStatus.Error);
         project.ReportNextAttemptAt.Should().NotBeNull();
+        project.LastReportError.Should().Be("llm down");
         verify.Videos.Where(v => v.ProjectId == id).Should().OnlyContain(v => v.Status == VideoStatus.Summarized);
     }
 
@@ -150,6 +154,8 @@ public class ReportRegenerationRunnerTests : IDisposable
 
         result.Outcome.Should().Be(ReportRegenerationOutcome.Parked);
         using var verify = _fx.CreateContext();
-        verify.Projects.Single(p => p.Id == id).ReportDirtySince.Should().BeNull(); // worker stops selecting it
+        var parked = verify.Projects.Single(p => p.Id == id);
+        parked.ReportDirtySince.Should().BeNull(); // worker stops selecting it
+        parked.LastReportError.Should().Be("still down");
     }
 }

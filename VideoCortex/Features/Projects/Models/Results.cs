@@ -21,7 +21,8 @@ public record ProjectDetailDto(
     ProjectStatus Status,
     DateTime? ReportUpdatedAt,
     DateTime CreatedAt,
-    string LibraryFolderName);
+    string LibraryFolderName,
+    string? LastReportError);
 
 /// <summary>Outcome of a create/save attempt.</summary>
 public record SaveProjectResult(

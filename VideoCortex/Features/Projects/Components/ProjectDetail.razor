@@ -93,6 +93,15 @@ else
                         Created @_project.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd") · Status: @_project.Status
                     </p>
                     <p class="text-body-secondary small text-break mb-0">Library: <code>@_libraryPath</code></p>
+                    @if (_project.Status == ProjectStatus.Error)
+                    {
+                        <div class="alert alert-danger py-2 mt-2 mb-0 small">
+                            <strong>Report generation failed:</strong>
+                            @(_project.LastReportError ?? "no error message was recorded.")
+                            <a href="diagnostics" class="alert-link">See Diagnostics</a> for details,
+                            or use <em>Rebuild Report</em> to retry.
+                        </div>
+                    }
                 </div>
             </div>
 

@@ -1,0 +1,202 @@
+@page "/diagnostics"
+@inject IDiagnosticsService DiagnosticsService
+@inject InMemoryLogSink LogSink
+
+<PageTitle>Diagnostics — Video Cortex</PageTitle>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 mb-0">Diagnostics</h1>
+    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ReloadAsync">
+        <i class="bi bi-arrow-repeat me-1"></i>Refresh
+    </button>
+</div>
+
+@if (_projectIssues is null || _videoIssues is null)
+{
+    <p class="text-body-secondary">Loading…</p>
+}
+else
+{
+    <div class="card mb-3">
+        <div class="card-header"><h2 class="h6 mb-0">Project Report Failures</h2></div>
+        <div class="card-body">
+            @if (_projectIssues.Count == 0)
+            {
+                <p class="text-body-secondary mb-0">No projects are reporting errors.</p>
+            }
+            else
+            {
+                <p class="text-body-secondary small">
+                    A project shows <strong>Status: Error</strong> when generating its report
+                    (<code>index.html</code>) failed — usually an LLM configuration or connectivity
+                    problem. A <span class="badge text-bg-danger">Parked</span> project has exhausted
+                    its retries; use <em>Rebuild Report</em> on the project page to try again.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Status</th>
+                                <th class="text-nowrap">Retries</th>
+                                <th class="text-nowrap">Next Attempt</th>
+                                <th>Last Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in _projectIssues)
+                            {
+                                <tr>
+                                    <td><a href="@($"projects/{p.Slug}")">@p.Name</a></td>
+                                    <td>
+                                        <span class="badge @(p.Status == ProjectStatus.Error ? "text-bg-danger" : "text-bg-secondary")">@p.Status</span>
+                                        @if (p.IsParked)
+                                        {
+                                            <span class="badge text-bg-danger ms-1">Parked</span>
+                                        }
+                                    </td>
+                                    <td>@p.ReportRetryCount</td>
+                                    <td class="text-nowrap">@(Local(p.ReportNextAttemptAt) ?? "—")</td>
+                                    <td class="text-break"><code>@(p.LastReportError ?? "(not recorded — check the log below)")</code></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><h2 class="h6 mb-0">Video Pipeline Failures</h2></div>
+        <div class="card-body">
+            @if (_videoIssues.Count == 0)
+            {
+                <p class="text-body-secondary mb-0">No videos are reporting errors.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Video</th>
+                                <th>Project</th>
+                                <th>Status</th>
+                                <th class="text-nowrap">Retries</th>
+                                <th class="text-nowrap">Next Attempt</th>
+                                <th>Last Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var v in _videoIssues)
+                            {
+                                <tr>
+                                    <td class="text-break">@(v.Title ?? v.YoutubeVideoId)</td>
+                                    <td class="text-nowrap"><a href="@($"projects/{v.ProjectSlug}")">@v.ProjectName</a></td>
+                                    <td>
+                                        <span class="badge text-bg-danger">@v.Status</span>
+                                        @if (v.Parked)
+                                        {
+                                            <span class="badge text-bg-danger ms-1">Parked</span>
+                                        }
+                                    </td>
+                                    <td>@v.RetryCount</td>
+                                    <td class="text-nowrap">@(Local(v.NextAttemptAt) ?? "—")</td>
+                                    <td class="text-break"><code>@(v.LastError ?? "—")</code></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h2 class="h6 mb-0">Recent Log Entries</h2>
+            <select class="form-select form-select-sm w-auto" @bind="_minLevel" @bind:after="ReloadLog">
+                <option value="@LogLevel.Information">Information and up</option>
+                <option value="@LogLevel.Warning">Warning and up</option>
+                <option value="@LogLevel.Error">Error only</option>
+            </select>
+        </div>
+        <div class="card-body">
+            <p class="text-body-secondary small">
+                The last @InMemoryLogSink.Capacity application log events since the app started
+                (in-memory only — cleared on restart). Newest first.
+            </p>
+            @if (_log.Count == 0)
+            {
+                <p class="text-body-secondary mb-0">No log entries at this level yet.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th class="text-nowrap">Time</th>
+                                <th>Level</th>
+                                <th>Source</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var e in _log)
+                            {
+                                <tr>
+                                    <td class="text-nowrap">@e.TimestampUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td><span class="badge @LevelBadge(e.Level)">@e.Level</span></td>
+                                    <td class="text-nowrap" title="@e.Category">@ShortCategory(e.Category)</td>
+                                    <td class="text-break">
+                                        @e.Message
+                                        @if (e.Exception is not null)
+                                        {
+                                            <details>
+                                                <summary class="small text-body-secondary">Exception details</summary>
+                                                <pre class="small mb-0">@e.Exception</pre>
+                                            </details>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<ProjectIssueDto>? _projectIssues;
+    private IReadOnlyList<VideoIssueDto>? _videoIssues;
+    private IReadOnlyList<LogEntry> _log = [];
+    private LogLevel _minLevel = LogLevel.Information;
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _projectIssues = await DiagnosticsService.GetProjectIssuesAsync();
+        _videoIssues = await DiagnosticsService.GetVideoIssuesAsync();
+        ReloadLog();
+    }
+
+    private void ReloadLog() => _log = LogSink.Snapshot(_minLevel);
+
+    private static string? Local(DateTime? utc)
+        => utc?.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+
+    private static string LevelBadge(LogLevel level) => level switch
+    {
+        >= LogLevel.Error => "text-bg-danger",
+        LogLevel.Warning => "text-bg-warning",
+        _ => "text-bg-secondary",
+    };
+
+    private static string ShortCategory(string category)
+        => category[(category.LastIndexOf('.') + 1)..];
+}

@@ -87,7 +87,8 @@ public sealed class ProjectService(
 
         return new ProjectDetailDto(
             p.Id, p.Name, p.Slug, p.Description, p.AIInstructions, p.Status,
-            p.ReportUpdatedAt, p.CreatedAt, OkfLibraryStore.SanitizeFolderName(p.Name));
+            p.ReportUpdatedAt, p.CreatedAt, OkfLibraryStore.SanitizeFolderName(p.Name),
+            p.LastReportError);
     }
 
     public async Task<DeleteProjectResult> DeleteAsync(

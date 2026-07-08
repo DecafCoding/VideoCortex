@@ -11,9 +11,11 @@ using VideoCortex.Core.Services.Report;
 using VideoCortex.Core.Services.Summary;
 using VideoCortex.Core.Services.Transcripts;
 using VideoCortex.Core.Services.Triage;
+using VideoCortex.Features.Diagnostics.Services;
 using VideoCortex.Features.Projects.Services;
 using VideoCortex.Features.Settings.Services;
 using VideoCortex.Services;
+using VideoCortex.Services.Logging;
 using VideoCortex.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,6 +27,12 @@ VideoCortexPaths.EnsureDataDir();
 // credentials here; reloadOnChange lets IOptionsMonitor consumers pick up edits without a restart.
 builder.Configuration.AddJsonFile(
     VideoCortexPaths.OverlayPath, optional: true, reloadOnChange: true);
+
+// Ring-buffer log sink surfaced by the Diagnostics page. The provider respects the standard
+// Logging level configuration; the buffer holds only the most recent events (process lifetime).
+var logSink = new InMemoryLogSink();
+builder.Services.AddSingleton(logSink);
+builder.Logging.AddProvider(new InMemoryLoggerProvider(logSink));
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -51,6 +59,7 @@ builder.Services.AddSingleton<IOkfLibraryStore>(sp =>
     return new OkfLibraryStore(root, templatesDir);
 });
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IDiagnosticsService, DiagnosticsService>();
 
 // Writable config overlay + settings service. Overlay is a singleton so its write-serializing
 // SemaphoreSlim is shared. Edits land in %USERPROFILE%\.videocortex\appsettings.Local.json,
