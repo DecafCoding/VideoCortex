@@ -1,18 +1,12 @@
 @inject IVideoCommands VideoCommands
 
 <EditForm Model="@Model" OnValidSubmit="HandleSubmit" FormName="add-video">
-    <div class="input-group">
-        <InputText class="form-control" @bind-Value="Model.Input"
-                   placeholder="YouTube URL or video ID" disabled="@_busy" />
-        <button type="submit" class="btn btn-primary" disabled="@_busy">
-            @(_busy ? "Adding…" : "Add Video")
-        </button>
-    </div>
+    <InputText class="form-control" @bind-Value="Model.Input"
+               placeholder="YouTube URL or video ID" disabled="@_busy" />
+    <button type="submit" class="btn btn-primary mt-2" disabled="@_busy">
+        @(_busy ? "Adding…" : "Add Video")
+    </button>
 </EditForm>
-
-<p class="text-body-secondary small mt-1 mb-0">
-    Pasted videos are queued for processing; the transcript and summary are fetched later.
-</p>
 
 @if (_message is not null)
 {

@@ -3,88 +3,82 @@
 @inject IVideoCommands VideoCommands
 @inject IVideoRetryCommand VideoRetry
 
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <h3 class="h5 mb-0">
-        Videos @(_videos is not null ? $"({_videos.Count})" : "")
-        @if (_polling)
-        {
-            <span class="text-body-secondary small ms-2">
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                Processing…
-            </span>
-        }
-    </h3>
-    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => RefreshAsync()" disabled="@_loading">
-        <i class="bi bi-arrow-clockwise"></i> Refresh
-    </button>
-</div>
-
-@if (_loading && _videos is null)
-{
-    <p class="text-body-secondary">Loading…</p>
-}
-else if (_videos is null || _videos.Count == 0)
-{
-    <p class="text-body-secondary">No videos in this project yet.</p>
-}
-else
-{
-    <div class="table-responsive">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr><th>Video</th><th>Status</th><th>Added</th><th class="text-end">Actions</th></tr>
-            </thead>
-            <tbody>
-                @foreach (var v in _videos)
-                {
-                    <tr>
-                        <td>
-                            @if (!string.IsNullOrWhiteSpace(v.Title))
-                            {
-                                @v.Title
-                            }
-                            else
-                            {
-                                <code>@v.YoutubeVideoId</code>
-                            }
-                            @if (ConceptUrl(v) is { } url)
-                            {
-                                <a class="small ms-1" href="@url" target="_blank">open ↗</a>
-                            }
-                            @if (NeedsRetry(v) && !string.IsNullOrWhiteSpace(v.LastError))
-                            {
-                                <div class="text-danger small" title="@v.LastError">@Truncate(v.LastError!, 120)</div>
-                            }
-                        </td>
-                        <td>
-                            <span class="badge @BadgeClass(v.Status)">@Label(v.Status)</span>
-                            @if (IsInProgress(v))
-                            {
-                                <span class="spinner-border spinner-border-sm text-body-secondary ms-1" style="width:.75rem;height:.75rem;" role="status" aria-hidden="true"></span>
-                            }
-                        </td>
-                        <td class="text-body-secondary small">@v.AddedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                        <td class="text-end text-nowrap">
-                            @if (NeedsRetry(v))
-                            {
-                                <button class="btn btn-sm btn-outline-primary" @onclick="() => RetryAsync(v.Id)" disabled="@_busy">Retry</button>
-                            }
-                            @if (_confirmingId == v.Id)
-                            {
-                                <button class="btn btn-sm btn-danger" @onclick="() => RemoveAsync(v.Id)" disabled="@_busy">Confirm</button>
-                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => _confirmingId = null" disabled="@_busy">Cancel</button>
-                            }
-                            else
-                            {
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => _confirmingId = v.Id">Remove</button>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="h6 mb-0">Videos @(_videos is not null ? $"({_videos.Count})" : "")</h2>
+        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => RefreshAsync()" disabled="@_loading">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
     </div>
-}
+    <div class="card-body">
+        @if (_loading && _videos is null)
+        {
+            <p class="text-body-secondary mb-0">Loading…</p>
+        }
+        else if (_videos is null || _videos.Count == 0)
+        {
+            <p class="text-body-secondary mb-0">No videos in this project yet.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr><th>Video</th><th>Status</th><th>Added</th><th class="text-end">Actions</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var v in _videos)
+                        {
+                            <tr>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(v.Title))
+                                    {
+                                        @v.Title
+                                    }
+                                    else
+                                    {
+                                        <code>@v.YoutubeVideoId</code>
+                                    }
+                                    @if (ConceptUrl(v) is { } url)
+                                    {
+                                        <a class="small ms-1" href="@url" target="_blank">open ↗</a>
+                                    }
+                                    @if (NeedsRetry(v) && !string.IsNullOrWhiteSpace(v.LastError))
+                                    {
+                                        <div class="text-danger small" title="@v.LastError">@Truncate(v.LastError!, 120)</div>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @BadgeClass(v.Status)">@Label(v.Status)</span>
+                                    @if (IsInProgress(v))
+                                    {
+                                        <span class="spinner-border spinner-border-sm text-body-secondary ms-1" style="width:.75rem;height:.75rem;" role="status" aria-hidden="true"></span>
+                                    }
+                                </td>
+                                <td class="text-body-secondary small">@v.AddedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="text-end text-nowrap">
+                                    @if (NeedsRetry(v))
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => RetryAsync(v.Id)" disabled="@_busy">Retry</button>
+                                    }
+                                    @if (_confirmingId == v.Id)
+                                    {
+                                        <button class="btn btn-sm btn-danger" @onclick="() => RemoveAsync(v.Id)" disabled="@_busy">Confirm</button>
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => _confirmingId = null" disabled="@_busy">Cancel</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => _confirmingId = v.Id">Remove</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
 
 @code {
     [Parameter] public int ProjectId { get; set; }
