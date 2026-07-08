@@ -36,6 +36,9 @@ public class Project
     /// <summary>Earliest UTC time the report worker may retry after a failure (exponential backoff).</summary>
     public DateTime? ReportNextAttemptAt { get; set; }
 
+    /// <summary>Message from the most recent failed report regeneration; cleared on success.</summary>
+    public string? LastReportError { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public ICollection<Video> Videos { get; set; } = new List<Video>();
